@@ -19,10 +19,10 @@ sweep:
 	python scripts/run_ablations.py $(SWEEP)
 
 compile-proposal:
-	cd docs/proposal && latexmk -pdf -interaction=nonstopmode vgmg_proposal.tex
+	cd docs/proposal && latexmk -pdf -interaction=nonstopmode Abel_proposal.tex
 
 compile-report:
-	cd docs/report && latexmk -pdf -interaction=nonstopmode vgmg_report.tex
+	cd docs/report && latexmk -pdf -interaction=nonstopmode Abel_report.tex
 
 clean:
 	rm -rf results/logs/* results/smoke results/value_fns

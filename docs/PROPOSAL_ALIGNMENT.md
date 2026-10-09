@@ -1,6 +1,6 @@
 # Proposal alignment (revised proposal vs plan vs repository)
 
-Source of truth for promises: `docs/proposal/vgmg_proposal.pdf` (**revised 2026-10-09**, 2 pages + references).
+Source of truth for promises: `docs/proposal/Abel_proposal.pdf` (**revised 2026-10-09**, 2 pages + references).
 Rule: no row may silently differ. A difference is either a strengthening declared in the report or a correction explained to the professor.
 Topic changes after Oct 12 need a documented blocker and an email before the change.
 
@@ -49,7 +49,7 @@ Note on the declaration sentence "I will write and understand the DiGress wrappe
 line by line (qa_notes, Stage 2-3), so the sentence stays true in spirit; the Q&A tests exactly this.
 
 ## 3. Proposal action: decision tree (Stage 0)
-- Feedback said **revise**: submit `docs/proposal/vgmg_proposal.pdf` renamed per the guidelines (`lastname_proposal.pdf`) on Canvas by Mon Oct 12 11:59 PM (one revision carries no penalty).
+- Feedback said **revise**: submit `docs/proposal/Abel_proposal.pdf` (already named `Abel_proposal.pdf`; the guidelines say `lastname_proposal.pdf`, i.e. `Le_proposal.pdf`, so rename on upload if you prefer to follow them literally) on Canvas by Mon Oct 12 11:59 PM (one revision carries no penalty).
 - Feedback said **approved / approved with conditions**: send the email below with the PDF attached (a dead checkpoint is a documented technical blocker, sent before Oct 12 as the rules require) and wait for the reply; if there is no answer by Oct 12, proceed with this plan, which already treats the dead checkpoint as the baseline path of the original risk (i).
 - No feedback yet: same as "approved", and ask for the status.
 
