@@ -1,5 +1,7 @@
 """Seeding and run-metadata capture."""
 
+from __future__ import annotations
+
 import os
 import platform
 import random
@@ -49,4 +51,21 @@ def log_run_metadata(seed: int) -> dict[str, Any]:
         "cuda": torch.version.cuda,
         "gpu": torch.cuda.get_device_name(0) if cuda else "cpu",
         "platform": platform.platform(),
+    }
+
+
+STREAM_NAMES = ("rollout_train", "rollout_val", "value_init", "eval")
+
+
+def seed_streams(seed: int) -> dict[str, torch.Generator]:
+    """Independent named generators derived from one run seed.
+
+    Value-function rollouts (train / val), network init and final evaluation sampling each
+    get their own stream, so evaluation molecules can never coincide with value-function
+    training data by construction, and a change in one stage does not shift another.
+    """
+    children = np.random.SeedSequence(seed).spawn(len(STREAM_NAMES))
+    return {
+        name: torch.Generator().manual_seed(int(c.generate_state(1)[0]))
+        for name, c in zip(STREAM_NAMES, children)
     }

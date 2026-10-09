@@ -1,22 +1,37 @@
 seed: 42
-device: "cuda"
+device: "cuda"            # scripts fall back to cpu when cuda is unavailable
 output_dir: "./results"
 
+# unguided | best_of_n | svdd_pm | svdd_value | random_select
+method: "svdd_value"
+
 model:
-  digress_checkpoint: "pretrained_digress.pt"  # TODO(week 1): official checkpoint path
+  name: "digress"                          # digress | toy (toy = smoke-test stand-in, not a generator)
+  digress_checkpoint: "pretrained_digress.pt"  # TODO(G2): official QM9 checkpoint path
+  toy_num_steps: 4
 
 data:
-  dataset: "qm9"
-  subset_size: 10000
+  reference: "qm9"                         # molecules used for novelty: qm9 (full set) | smoke
 
 svdd:
-  num_candidates_m: 5        # M; ablations sweep {1, 5, 10, 20}
-  reward_type: "sa"          # sa | qed | docking_proxy
-  value_fn_arch: "mlp"       # mlp | gnn
-  value_train_steps: 200
-  selection: "argmax"        # argmax | softmax
-  alpha: 0.1                 # softmax temperature
+  num_candidates_m: 10                     # M; sweeps use {1, 5, 10, 20}
+  reward_type: "sa"                        # sa | qed  (docking_proxy is tier T3)
+  value_fn_arch: "mlp"                     # mlp (gnn is tier T3)
+  selection: "argmax"                      # argmax | softmax
+  alpha: 0.1                               # softmax temperature
 
-smoke:
-  num_molecules: 50
-  num_rollouts: 200
+value_fn:                                  # trained once per (model, reward, arch, seed), then cached
+  train_chains: 10000                      # unguided rollouts for training (proposal: 10k)
+  val_chains: 1000                         # separate rollouts for model selection (different RNG stream)
+  ts_per_chain: 20                         # timesteps sampled per chain
+  train_steps: 3000
+  batch_size: 256
+  lr: 0.001
+  hidden_dim: 128
+  num_hidden: 2
+  eval_every: 100
+
+eval:
+  num_molecules: 2000                      # N per run (proposal)
+  batch_size: 512
+  report_rewards: ["sa", "qed"]            # all computed from the same molecules

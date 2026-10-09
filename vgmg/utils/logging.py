@@ -1,5 +1,7 @@
 """Per-run logging: creates ``results/logs/<name>_<timestamp>/`` and records provenance."""
 
+from __future__ import annotations
+
 import json
 import logging
 import time
@@ -30,13 +32,15 @@ class RunLogger:
 
 
 @contextmanager
-def setup_logging(name: str, config: dict[str, Any]) -> Iterator[RunLogger]:
+def setup_logging(name: str, config: dict[str, Any], run_id: str | None = None) -> Iterator[RunLogger]:
     """Create a run dir, save config/seed/commit/metadata, and yield a ``RunLogger``.
 
+    With ``run_id`` the directory is deterministic (``results/logs/<run_id>``) so sweeps can
+    detect finished runs and resume after preemption; otherwise it is ``<name>_<timestamp>``.
     Wall-clock time is appended to ``metadata.json`` on exit.
     """
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_dir = Path(config.get("output_dir", "./results")) / "logs" / f"{name}_{stamp}"
+    run_dir = Path(config.get("output_dir", "./results")) / "logs" / (run_id or f"{name}_{stamp}")
     run_dir.mkdir(parents=True, exist_ok=True)
 
     logger = logging.getLogger(f"vgmg.{name}.{stamp}")

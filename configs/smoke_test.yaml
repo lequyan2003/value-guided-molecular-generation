@@ -1,9 +1,8 @@
+# Tiny CPU run on the toy stand-in generator: checks the pipeline, produces NO research result.
 device: "cpu"
-svdd:
-  num_candidates_m: 5
-  reward_type: "sa"
-  value_fn_arch: "mlp"
-  value_train_steps: 200
-smoke:
-  num_molecules: 50
-  num_rollouts: 200
+output_dir: "./results/smoke"
+model: {name: "toy"}
+data: {reference: "smoke"}
+svdd: {num_candidates_m: 5, reward_type: "sa"}
+value_fn: {train_chains: 200, val_chains: 100, ts_per_chain: 4, train_steps: 300, eval_every: 50, hidden_dim: 64, num_hidden: 1}
+eval: {num_molecules: 100, batch_size: 50}
