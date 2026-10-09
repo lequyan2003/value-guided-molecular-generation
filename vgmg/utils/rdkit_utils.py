@@ -1,5 +1,7 @@
 """RDKit wrappers: parsing, canonicalization, QED, SA score, fingerprints, similarity."""
 
+from __future__ import annotations
+
 import os
 import sys
 
@@ -14,10 +16,18 @@ RDLogger.DisableLog("rdApp.*")
 
 
 def mol_from_smiles(smiles: str) -> Chem.Mol | None:
-    """Parse SMILES; return None if invalid or empty."""
+    """Parse SMILES; return None if unparsable, empty, or disconnected.
+
+    This is the single definition of "valid" for the whole project: RDKit-sanitizable
+    AND one connected fragment (the proposal's validity criterion). Every reward and
+    metric goes through here, so no method can gain from disconnected graphs.
+    """
     if not smiles:
         return None
-    return Chem.MolFromSmiles(smiles)
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None or len(Chem.GetMolFrags(mol)) != 1:
+        return None
+    return mol
 
 
 def is_valid(smiles: str) -> bool:

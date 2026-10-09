@@ -1,5 +1,7 @@
 """Reward functions mapping a SMILES string to a scalar in [0, 1] (higher = better)."""
 
+from __future__ import annotations
+
 from typing import Callable
 
 from vgmg.utils.rdkit_utils import is_valid, qed_score, sa_score
@@ -14,7 +16,7 @@ def sa_reward(smiles: str) -> float:
 
 def qed_reward(smiles: str) -> float:
     """Drug-likeness (QED). Invalid -> 0."""
-    return qed_score(smiles)
+    return qed_score(smiles) if is_valid(smiles) else 0.0
 
 
 def docking_proxy_reward(smiles: str) -> float:
