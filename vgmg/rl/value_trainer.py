@@ -155,3 +155,16 @@ def sibling_ranking(denoiser: Denoiser, model: nn.Module, reward_fn: RewardFn, t
     rhos = [r for r in rhos if not np.isnan(r)]
     return {"t": t, "mean_sibling_spearman": float(np.mean(rhos)) if rhos else float("nan"),
             "n_parents_used": len(rhos), "m": m, "completions": completions}
+
+
+@torch.no_grad()
+def value_fn_t0_check(denoiser: Denoiser, model: nn.Module, smiles: list[str], reward_fn: RewardFn) -> dict:
+    """Sanity check at t = 0 (proposal Sec. 4): on REAL QM9 molecules (held-out split) the value function,
+    evaluated at t = 0, should agree with the true reward. Failing this means the state featurizer or the
+    value function cannot represent the reward even for clean graphs, so t > 0 results would be meaningless.
+    Uses only held-out molecules; never for training or tuning.
+    """
+    pred = model(denoiser.features(denoiser.encode(smiles)), torch.tensor(0.0)).numpy()
+    truth = np.array([reward_fn(s) for s in smiles])
+    return {"n": len(smiles), "spearman": spearman(pred, truth), "mse": float(np.mean((pred - truth) ** 2)),
+            "mse_const": float(np.var(truth))}
