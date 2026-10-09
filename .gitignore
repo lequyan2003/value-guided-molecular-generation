@@ -21,3 +21,12 @@ results/logs/*
 *.toc
 Abel_progress.md
 
+
+
+logs/
+outputs/
+*.err
+.sync_stamp
+id_*
+*.pem
+*.key
