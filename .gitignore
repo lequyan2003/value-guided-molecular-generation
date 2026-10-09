@@ -30,3 +30,5 @@ outputs/
 id_*
 *.pem
 *.key
+results/smoke/
+results/value_fns/

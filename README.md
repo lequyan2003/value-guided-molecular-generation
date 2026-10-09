@@ -10,13 +10,14 @@ keep the best. Contribution: sample-efficiency analysis (M) and molecular reward
 
 | Piece | State |
 |---|---|
-| SVDD core, value fn (MLP), rewards (SA, QED), metrics, logging, tests | implemented |
-| DiGress wrapper (`vgmg/models/digress.py`) | **not yet** - stub raises `NotImplementedError` |
-| GNN value fn, docking proxy reward | **not yet** - stubs |
-| `train_value_function.py`, `run_inference.py`, `run_ablations.py` | skeletons (need DiGress) |
+| Samplers (unguided, best-of-N, SVDD-PM, SVDD-value, random-select), value fn (MLP + timestep), rewards (SA, QED), metrics, stats, sweeps, tests | implemented, run on a toy generator |
+| DiGress wrapper (`vgmg/models/digress.py`) | **not yet** - stub raises `NotImplementedError` (week 2) |
+| GNN value fn, docking proxy | **not yet** - tier T3, only if gate G4 says go |
 
-The **smoke test currently uses `ToyDenoiser`, a stand-in that is not a generative model**; its numbers
-only verify that the pipeline runs and is reproducible. They are not research results.
+The **smoke test uses `ToyDenoiser`, a stand-in that is not a generative model**; its numbers only show the
+pipeline runs and is reproducible. They are not research results.
+
+Project plan, gates and rubric mapping: [docs/PLAN.md](docs/PLAN.md).
 
 ## Install
 
@@ -29,8 +30,8 @@ pip install -r requirements.txt     # or: conda env create -f environment.yml
 ## Smoke test (~3 s on CPU, no download, no GPU)
 
 ```bash
-make smoke-test          # or: python scripts/smoke_test.py
-make test                # unit tests
+make smoke-test          # all five methods on the toy generator, ~3 s
+make test                # 27 unit tests (evaluation correctness, stats, determinism)
 ```
 
 Same seed gives identical output. Each run writes `results/logs/<name>_<timestamp>/` with `config.yaml`,
@@ -40,13 +41,17 @@ Override any config key: `python scripts/smoke_test.py svdd.num_candidates_m=10 
 ## Data and full experiments
 
 ```bash
-make splits              # downloads QM9, writes data/splits/*.txt (seed 42)
-python scripts/run_ablations.py configs/ablation_m.yaml      # needs the DiGress wrapper
-python scripts/generate_results_table.py                     # -> results/tables/summary.tex
+make splits                                   # QM9 download + seeded 1k sanity splits (data/splits, committed)
+make reference                                # reward stats of real QM9 test molecules
+python scripts/run_inference.py method=svdd_pm svdd.reward_type=qed seed=1     # one run
+make sweep SWEEP=configs/sweeps/a1_m_sweep.yaml                                # a sweep; finished runs are skipped
+make results                                  # -> results/tables/{summary.csv,summary.tex,verdict.json}
 ```
+Sweeps: `b1_unguided`, `b2_best_of_n`, `a1_m_sweep`, `a2_estimator`, `h2_selection`, `t3_gnn`. Real runs need the DiGress
+wrapper (`model.name=digress`). The analysis rule is fixed in [docs/PREREGISTRATION.md](docs/PREREGISTRATION.md).
 
 ## Layout
 
-`vgmg/` package (data, models, rl, eval, utils, tests) - `scripts/` entry points - `configs/` YAML -
-`job_scripts/` Slurm (GAIVI) - `docs/proposal/`, `docs/report/` LaTeX (`make compile-proposal`, `make compile-report`).
+`vgmg/` package (data, models, rl, eval, utils, tests) - `scripts/` entry points - `configs/` YAML (`sweeps/` = experiment matrix) -
+`job_scripts/` Slurm (GAIVI) - `docs/` plan, pre-registration, proposal, report, `docs/report/` LaTeX (`make compile-proposal`, `make compile-report`).
 Provenance of every component is in [CONTRIBUTIONS.md](CONTRIBUTIONS.md).
