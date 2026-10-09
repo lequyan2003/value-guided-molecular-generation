@@ -1,0 +1,23 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+.venv/
+.env
+*.egg-info/
+# Data and run outputs (small split files in data/splits are tracked)
+data/*.csv
+data/*.sdf
+data/raw/
+results/logs/*
+*.pt
+*.ckpt
+# LaTeX build artifacts
+*.aux
+*.log
+*.bbl
+*.blg
+*.out
+*.toc
+Abel_progress.md
+
