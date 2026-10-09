@@ -1,3 +1,0 @@
-sweep:
-  svdd.reward_type: ["sa", "qed", "docking_proxy"]
-  seed: [0, 1, 2]

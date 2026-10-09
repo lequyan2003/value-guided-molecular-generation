@@ -1,0 +1,3 @@
+# B1: unguided DiGress. Reward-independent; SA and QED are both scored from the same molecules.
+base: {method: unguided}
+sweep: {seed: [0, 1, 2, 3, 4]}

@@ -1,3 +1,0 @@
-sweep:
-  svdd.value_fn_arch: ["mlp", "gnn"]
-  seed: [0, 1, 2]

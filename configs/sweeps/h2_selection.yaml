@@ -1,0 +1,3 @@
+# H2: argmax vs softmax selection (diversity effect), M=10.
+base: {method: svdd_value, svdd.num_candidates_m: 10, svdd.selection: softmax}
+sweep: {svdd.alpha: [0.1, 1.0], svdd.reward_type: [sa, qed], seed: [0, 1, 2]}

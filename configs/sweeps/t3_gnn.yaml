@@ -1,0 +1,3 @@
+# Tier T3 only: run after T2 is complete and gate G4 says go.
+base: {method: svdd_value, svdd.num_candidates_m: 10, svdd.value_fn_arch: gnn}
+sweep: {svdd.reward_type: [sa, qed], seed: [0, 1, 2]}

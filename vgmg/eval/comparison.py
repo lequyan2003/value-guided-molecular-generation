@@ -1,21 +1,72 @@
-"""Aggregate per-run ``summary.json`` files into an ablation table (CSV / LaTeX)."""
+"""Aggregate per-run ``summary.json`` files into tables and the pre-registered verdict."""
+
+from __future__ import annotations
 
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
+from vgmg.eval.stats import mean_std, paired_bootstrap_ci, preregistered_verdict
 
-def collect_summaries(logs_dir: str | Path) -> pd.DataFrame:
-    """Read every ``<run>/summary.json`` under ``logs_dir`` into one row per run."""
+METRIC_COLS = ["reward_mean", "reward_top10", "validity", "uniqueness", "novelty", "diversity"]
+
+
+def load_runs(logs_dir: str | Path) -> list[dict]:
+    """Every finished run's summary (a run is finished iff ``summary.json`` exists)."""
+    return [json.loads(p.read_text()) for p in sorted(Path(logs_dir).glob("*/summary.json"))]
+
+
+def runs_to_rows(runs: list[dict]) -> pd.DataFrame:
+    """One row per (run, scored reward). Unguided runs are scored under every reported reward."""
     rows = []
-    for path in sorted(Path(logs_dir).glob("*/summary.json")):
-        row = json.loads(path.read_text())
-        row["run"] = path.parent.name
-        rows.append(row)
+    for r in runs:
+        for reward, m in r["metrics"].items():
+            if r["reward"] not in (None, reward):
+                continue  # a guided run is only evaluated under the reward it optimised
+            rows.append({"method": r["method"] + (f"_{r['selection']}" if r["selection"] == "softmax" else ""),
+                         "reward": reward, "M": r["M"], "seed": r["seed"], "run_id": r["run_id"],
+                         "nfe_per_molecule": r["nfe_per_molecule"],
+                         "wall_s_per_1k": 1000 * r["sample_wall_clock_s"] / r["num_molecules"],
+                         **{c: m[c] for c in METRIC_COLS}})
     return pd.DataFrame(rows)
+
+
+def summarize(rows: pd.DataFrame) -> pd.DataFrame:
+    """Mean and sample std across seeds for each (method, reward, M); ``n_seeds`` shows the evidence."""
+    out = []
+    for (method, reward, M), g in rows.groupby(["method", "reward", "M"]):
+        rec = {"method": method, "reward": reward, "M": M, "n_seeds": g["seed"].nunique()}
+        for c in METRIC_COLS + ["nfe_per_molecule", "wall_s_per_1k"]:
+            mu, sd = mean_std(g[c].tolist())
+            rec[c], rec[c + "_std"] = mu, sd
+        out.append(rec)
+    return pd.DataFrame(out)
 
 
 def to_latex(df: pd.DataFrame, columns: list[str]) -> str:
     """Render selected columns as a booktabs LaTeX table (3 decimals)."""
     return df[columns].to_latex(index=False, float_format="%.3f")
+
+
+def _per_molecule(logs_dir: Path, run_ids: dict[int, str], reward: str) -> dict[int, np.ndarray]:
+    return {s: pd.read_csv(logs_dir / rid / "molecules.csv")[f"reward_{reward}"].to_numpy()
+            for s, rid in run_ids.items()}
+
+
+def headline_verdict(rows: pd.DataFrame, logs_dir: str | Path, reward: str, M: int = 10,
+                     method: str = "svdd_value", baseline: str = "best_of_n") -> dict:
+    """Apply the pre-registered rule: ``method`` vs ``baseline`` at ``M`` for ``reward``, paired by seed."""
+    logs_dir = Path(logs_dir)
+    sel = rows[(rows.reward == reward) & (rows.M == M)]
+    a, b = sel[sel.method == method].set_index("seed"), sel[sel.method == baseline].set_index("seed")
+    seeds = sorted(set(a.index) & set(b.index))
+    if len(seeds) < 3:
+        return {"reward": reward, "M": M, "status": f"insufficient paired seeds ({len(seeds)} < 3)"}
+    v = preregistered_verdict(a.loc[seeds, "reward_mean"].tolist(), b.loc[seeds, "reward_mean"].tolist(),
+                              a.loc[seeds, "validity"].tolist(), b.loc[seeds, "validity"].tolist())
+    lo, hi = paired_bootstrap_ci(_per_molecule(logs_dir, a.loc[seeds, "run_id"].to_dict(), reward),
+                                 _per_molecule(logs_dir, b.loc[seeds, "run_id"].to_dict(), reward))
+    return {"reward": reward, "M": M, "method": method, "baseline": baseline, "seeds": seeds,
+            "bootstrap_ci95": [lo, hi], **v}

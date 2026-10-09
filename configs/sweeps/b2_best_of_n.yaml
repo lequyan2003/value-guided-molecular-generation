@@ -1,0 +1,3 @@
+# B2: best-of-N (N = M), true reward as selector. Candidate-matched with SVDD at the same M.
+base: {method: best_of_n}
+sweep: {svdd.reward_type: [sa, qed], svdd.num_candidates_m: [5, 10, 20], seed: [0, 1, 2, 3, 4]}
