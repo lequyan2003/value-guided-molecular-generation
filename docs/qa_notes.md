@@ -11,6 +11,8 @@ read the code again until you can. Questions are the ones the grading guide says
 - [ ] Why does the value function need the timestep? What if I remove it?
 
 ## DiGress
+- [ ] Why the official checkpoint is not used, what I trained instead (config, seed, epochs, validity reached) and why one training seed limits the conclusions.
+- [ ] Validity conventions: DiGress (sanitize, largest fragment) vs mine (connected). Which numbers are comparable?
 - [ ] Forward process (marginal transition matrices), what the network predicts, how x_{t-1} is sampled.
 - [ ] Why one forward pass serves all M children (NFE accounting).
 - [ ] Training loss and noise schedule; why the QM9 checkpoint is not retrained.

@@ -5,13 +5,15 @@ Commit this file before the first main-sweep run. After that, changes need a dat
 `make results` applies this rule through `vgmg/eval/stats.py::preregistered_verdict`.
 
 ## Question
-Does SVDD with a learned value function on frozen DiGress (QM9) raise mean SA / QED reward more
+Does SVDD with a learned value function on a frozen DiGress model trained on QM9 raise mean SA / QED reward more
 than best-of-N with the same number of candidates (N = M), without lowering validity, and how does
-the gain scale with M?
+the gain scale with M? (Matches the revised proposal; see `docs/PROPOSAL_ALIGNMENT.md`.)
 
 ## Definitions
 - **Validity**: RDKit-sanitizable and a single connected fragment (`vgmg/utils/rdkit_utils.py`).
-  Stricter than DiGress's own metric, which keeps the largest fragment.
+  Stricter than DiGress's own metric, which sanitizes and then keeps the largest fragment (verified in
+  `analysis/rdkit_functions.py`); the DiGress-convention validity is also reported (`validity_digress`, to be added at Stage 2)
+  so published numbers (99.0% valid, 96.2% unique) can be compared.
 - **Primary metric**: `reward_mean` = mean reward over all N=2000 generated molecules, invalid = 0.
   Secondary: `reward_top10`, `reward_mean_valid`, uniqueness, novelty (vs full QM9), diversity (ECFP4).
 - **SA reward** = (10 - SA)/9; **QED** from RDKit. Both in [0,1].
@@ -28,16 +30,16 @@ the gain scale with M?
 | A1 | SVDD-MLP, M in {1,5,10,20} | scaling |
 | A2 | estimator: PM vs MLP (GNN only if tier T3) at M=10 | isolates the value function |
 
-## Cost accounting (corrects the proposal's wording)
-The proposal says "equal denoiser evaluations". With DiGress one network forward pass yields the
-distribution p(x0|x_t) from which all M children are sampled, so (verify at gate G1 by reading
-`sample_p_zs_given_zt`):
+## Cost accounting (the revised proposal's wording)
+The first proposal said "equal denoiser evaluations". Verified in DiGress's `sample_p_zs_given_zt` (one `self.forward` call, then
+sampling from the posterior): one network pass yields p(x0|x_t) from which all M children are sampled, so
 - SVDD-MLP ≈ T forward passes per molecule (+ M·T cheap value evaluations),
 - SVDD-PM ≈ (M+1)·T, best-of-N = M·T.
 So "N = M" matches **candidates**, and gives B2 up to M× more network passes than SVDD-MLP.
 Every run records `nfe_per_molecule` and sampling wall-clock. Reported: reward vs NFE and vs
 wall-clock curves (B2 at N in {1,5,10,20} against SVDD at M in {1,5,10,20}). The primary test below
-is candidate-matched (M = N = 10); the cost-axis plots decide how it is worded in the report.
+is candidate-matched (M = N = 10); a secondary point compares SVDD with best-of-N at the **same measured wall-clock**
+(the protocol of the SVDD paper's Best-N baseline), taking N from the pool prefix; the cost-axis plots decide how it is worded in the report.
 Value-function training cost (rollouts + fitting) is reported separately and amortised over
 the 2000 molecules of that run.
 
@@ -51,6 +53,11 @@ The verdict is also reported on seeds 0-2 alone (the proposal's design); if the 
 (seeds fixed), and all per-seed values. A claim is made only if rule 1 and 2 hold; if the CI
 includes 0 while rule 1 holds, the report says so. Failing the rule is reported as a
 negative result and analysed with H1-H3.
+
+## Slot A reporting
+At the talk (Nov 13) only seeds 0-2 exist: the verdict is shown for seeds 0-2 and labeled **preliminary**. The final verdict (all
+paired seeds, 0-4 at M=10) is computed by the same code on the frozen Nov 29 data; if it differs from the talk's, both are reported.
+Effect size is reported next to the rule: gain over B2 in reward units and as a fraction of the B2-over-B1 gain.
 
 ## Wall-clock
 Comparable only among runs on the same GPU type (recorded per run; `make results` warns on mixed GPUs). Headline runs target
@@ -77,6 +84,11 @@ S1 reward code on real QM9 test split (done: SA mean 0.631, QED 0.466). S2 value
    value alpha log E[exp(r/alpha)|x_t]; with argmax selection only ranking matters. (Re-check the
    paper's statement of its estimator before the talk.)
 2. It is trained on unguided rollouts but used on guided trajectories (distribution shift).
+2b. The frozen DiGress is a single training run (seed 0): all conclusions are conditional on that model. Seeds vary the value
+   function, rollouts and sampling, not the generator. (There is no official checkpoint; ours is trained with the repo's unmodified
+   QM9 config.)
+2c. SVDD-PM scores a child by the reward of the argmax-decoded denoiser prediction; an invalid decode scores 0, so ties at early
+   steps are broken at random and the tie fraction is reported.
 3. Features for the MLP are histograms of atom/bond types of a noisy graph, a lossy summary.
 4. Rewards are cheap and exact for B2 (oracle selector), which favours B2.
 

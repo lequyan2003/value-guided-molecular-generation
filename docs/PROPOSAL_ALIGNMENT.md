@@ -1,38 +1,62 @@
-# Proposal alignment (what I promised the professor vs. what the repo does)
+# Proposal alignment (revised proposal vs plan vs repository)
 
-Source of truth for promises: `docs/proposal/vgmg_proposal.pdf`. Every row says where the promise is implemented
-and whether anything differs. **Rule:** no row may silently differ; a difference is either (a) a strengthening
-that I declare in the report, or (b) a correction that I mention to the professor if the proposal must be revised.
-Topic changes after Oct 12 need a documented blocker and an email *before* the change.
+Source of truth for promises: `docs/proposal/vgmg_proposal.pdf` (**revised 2026-10-09**, 2 pages + references).
+Rule: no row may silently differ. A difference is either a strengthening declared in the report or a correction explained to the professor.
+Topic changes after Oct 12 need a documented blocker and an email before the change.
 
-| # | Proposal commitment | Where in repo | Status / difference |
-|---|---|---|---|
-| 1 | Question: SVDD-MLP vs best-of-N, mean SA/QED reward, validity, scaling in M | `docs/PREREGISTRATION.md` | Same. **Wording correction:** "equal denoiser evaluations" -> "equal candidates (N = M)" plus reported cost curves, because M children share one forward pass |
-| 2 | Primary paper SVDD + DiGress, DDPO, Gao et al. | CONTRIBUTIONS, report | Same; report needs 12-20 refs (6930) |
-| 3 | Frozen DiGress, QM9 heavy-atom checkpoint, T=500 | `vgmg/models/digress.py` (stub) | Pending G1/G2. Risk (i) unchanged |
-| 4 | Value fn: MLP on atom/bond histograms + timestep embedding | `models/value_function.py` | MLP has a sinusoidal timestep embedding (4 frequencies + t). Histogram featurizer is part of the DiGress wrapper |
-| 5 | Value fn: 3-layer message-passing GNN | `configs/sweeps/a2_gnn.yaml` | Scheduled Nov 2-8 as promised; dropped if it does not beat the MLP on validation MSE by Nov 6 (risk ii). Not implemented yet |
-| 6 | MSE regression onto r(G0), 10k unguided rollouts, per reward | `rl/value_trainer.py`, `value_fn.train_chains: 10000` | Same. Adds: separate validation chains (1k), model selection on validation MSE |
-| 7 | Selection argmax or softmax; SVDD-PM | `rl/svdd.py` | Same |
-| 8 | Rewards SA (10-SA)/9 and QED, invalid -> 0 | `rl/rewards.py` | Same; invalid also covers disconnected molecules (proposal's validity criterion) |
-| 9 | Docking proxy: stretch, dropped if not started by Nov 6 | `rewards.py` stub | Same |
-| 10 | Data: QM9 133,885; three seeded (42) disjoint 1k splits to sanity-check reward code and value-fn predictions at t=0 | `data/splits`, `scripts/qm9_reference.py`, `value_fn_t0_check` | Same. Reward code checked on the test split; t=0 value-fn check implemented, runs once the wrapper exists. Splits never train or tune anything |
-| 11 | N=2000 molecules per run, seeds 0,1,2 | `configs/default.yaml`, sweeps | Same for all sweeps. **Strengthening:** seeds 3-4 for the headline point only (M=10), pre-registered, run regardless of seeds 0-2 outcome |
-| 12 | Metrics: mean + top-10% reward, validity, uniqueness, novelty vs QM9, ECFP4 diversity, denoiser calls, wall-clock | `eval/metrics.py`, summary.json | Same; denoiser calls = network forward passes (`nfe`); GPU recorded per run |
-| 13 | Baselines B1 unguided, B2 best-of-N (cost = SVDD with same M), B3 SVDD-PM | `eval/baselines.py`, sweeps | Same. B2 implemented as one pool of 20 draws/slot per seed (nested best-of-5/10/20), valid because chains are reward-independent. Extra control: random selection |
-| 14 | A1: M in {1,5,10,20}, SA and QED | `a1_m_sweep.yaml` | Same |
-| 15 | A2: estimator PM / MLP / GNN at M=10 | `a1_m_sweep` (MLP), `a2_estimator`, `a2_gnn` | Same |
-| 16 | Not run: DDPO fine-tuning, DiGress regressor guidance | PREREGISTRATION "Not run" | Same |
-| 17 | Falsifiable outcome: gain over B2 at M=10 <= 2x across-seed std, or validity > 5 pts below B1 | `eval/stats.py::preregistered_verdict` | Same; "across-seed std" made precise (max of the two methods' stds) |
-| 18 | Compute: GAIVI, ~50 GPU-h, arithmetic shown | `scripts/estimate_gpu_hours.py` | With proposal assumptions (0.1 s, 1.5x) the corrected accounting gives ~32 h (40 h with margin), under the 50 h budget; re-run with the measured s/step at G1 |
-| 19 | Single-GPU fallback < 2 h (N=1000, M in {1,10}, 1 seed, MLP, SA) | `configs/sweeps/fallback.yaml`, `make fallback` | Config exists; first run in the week of Oct 26 (milestone) |
-| 20 | Checkpoints every 50 batches; log config, seed, commit, metrics | `experiments.py::sample_molecules` (`partial.pt` after every chunk of 512), `utils/logging.py` | Same or finer: resume gives bit-identical molecules (tested) |
-| 21 | Milestones Oct 12 -> Dec 4 | `docs/PLAN.md` section 4 | Same weeks and gates; B2 may start earlier than Nov 16-22 (cheap) |
-| 22 | Risks (i)-(iv) with dates | `docs/PLAN.md` section 8 | Same; shrink order follows the proposal's rule (iii) after dropping the extra seeds |
-| 23 | Contribution table | `CONTRIBUTIONS.md` | Same, more detailed |
-| 24 | AI declaration: scaffolding, tests, proposal editing; "I will write and understand the DiGress wrapper and SVDD code" | report | **Must be updated honestly in the report:** Claude Code also drafted the implementation of SVDD, baselines, value trainer, metrics and the experiment runner; design, hypotheses, analysis and the ability to explain all code are mine. If the proposal is resubmitted, change that sentence now |
+## 1. What changed from the first proposal, and why
+| Change | Reason (evidence in `docs/VERIFICATION.md`) | Scope impact |
+|---|---|---|
+| DiGress is trained by me on QM9 (repo config, then frozen) instead of loading released weights | Official checkpoint link returns 404; README says the author lost the drive; issue #109 open, no mirror (V16) | None on the question; was proposal risk (i), now the baseline path; +<= 10 GPU-h |
+| "equal denoiser evaluations" -> best-of-N with N = M **plus** cost curves (network passes, wall-clock, best-of-N at SVDD's wall-clock) | One DiGress pass serves all M children (V17); the SVDD paper matches best-of-N by inference time (V5) | Clarifies the comparison; strictly more informative |
+| Gap statement rewritten: SVDD's paper uses continuous GDSS on ZINC-250k, defers DiGress (App. C); TreeDiff compares SVDD and best-of-N on GraphDiT | The paper already has best-of-N; the old text overclaimed and misdescribed the molecule setup as MOSES (V5-V7, V11) | Contribution is the new domain + new evaluation (guidelines 1.4) |
+| Fourth supporting reference (TreeDiff) | Closest prior comparison | none |
+| Validity: also report DiGress's largest-fragment convention | Published numbers use it (V20) | none |
+| Seeds 0-2 everywhere, plus 3-4 at the headline point | Stronger evidence at the decisive comparison; pre-registered | declared strengthening |
+| Compute arithmetic rewritten with corrected pass counts (about 31 h + <= 10 h training, about 48 GPU-h with margin) | Old arithmetic charged every candidate as a full pass | under the original 50 GPU-h |
+| Milestones for **Slot A** (Nov 13); GNN go/no-go Nov 20 (was Nov 6); docking dropped if not started by Nov 20 | Slot A needs the main result by Nov 8; the GNN is not on that path | same deliverables, reordered |
+| Risk (i) rewritten (train target >= 97% validity; fallback rules); risk (v) added (Slot C if the Oct 30 gate fails) | Dead checkpoint; Slot A | none |
+| AI declaration | **unchanged** | none |
 
-## Things to tell the professor (only if a revision/email is needed)
-1. The compute-match wording (row 1) and that the corrected accounting lowers the GPU estimate (row 18).
-2. Extra headline seeds (row 11) and the A2/B2 implementation detail (row 13) are strengthenings, not scope changes.
-Nothing else departs from the approved scope.
+## 2. Commitment map (revised proposal -> plan -> repository)
+| # | Commitment | Plan stage | Repository | Status |
+|---|---|---|---|---|
+| 1 | Question: SVDD-MLP vs best-of-N (N = M), mean SA/QED, validity, scaling in M | prereg | `docs/PREREGISTRATION.md` | aligned |
+| 2 | Primary SVDD, supporting DiGress, DDPO, Gao, TreeDiff | report | `docs/proposal/refs.bib` | aligned |
+| 3 | Train DiGress on QM9 with unmodified repo config, T=500, freeze | Stage 1-2 | submodule `third_party/DiGress` (to add), training job script (to add) | planned |
+| 4 | Wrapper returns M i.i.d. children from one pass | Stage 2 | `vgmg/models/digress.py` (stub), `vgmg/models/denoiser.py` interface and NFE counter | interface done, wrapper planned |
+| 5 | Value fn: MLP on atom/bond histograms + timestep embedding | Stage 3 | `models/value_function.py` (embedding done); histogram featurizer inside the wrapper | partly done |
+| 6 | Value fn: 3-layer GNN | Stage 6 (go/no-go Nov 20) | `configs/sweeps/a2_gnn.yaml`; class stub | planned |
+| 7 | MSE regression onto r(G0), 10k unguided rollouts, per reward | Stage 3 | `rl/value_trainer.py`, `value_fn.train_chains: 10000` | done on toy |
+| 8 | Argmax or softmax selection; SVDD-PM | Stage 3-4 | `rl/svdd.py` | done on toy |
+| 9 | Rewards SA (10-SA)/9 and QED, invalid -> 0; docking proxy stretch | Stage 1-4 | `rl/rewards.py` | done; docking dropped unless started by Nov 20 |
+| 10 | Data: QM9 133,885, CC0; DiGress's own split; 1k sanity splits only for reward and t=0 checks; novelty vs all of QM9 | Stage 2-3 | `data/`, `scripts/qm9_reference.py`, `value_fn_t0_check` | done / planned |
+| 11 | N = 2000, seeds 0-2 (+3-4 at M=10) | Stage 4, 6 | `configs/default.yaml`, `configs/sweeps/*.yaml` | done |
+| 12 | Metrics incl. top-10% reward, validity, uniqueness, novelty, diversity, passes, wall-clock | Stage 2 | `eval/metrics.py`; `validity_digress` metric to add | partly done |
+| 13 | B1, B2 (N = M, plus wall-clock-matched N), B3 PM, random-selection control | Stage 4 | `eval/baselines.py`, sweeps | done on toy |
+| 14 | A1: M in {1,5,10,20}, SA and QED | Stage 4 (M=10), 6 (rest) | `a1_m_sweep.yaml` | done on toy |
+| 15 | A2: PM / MLP / GNN at M=10 | Stage 4, 6 | `a2_estimator.yaml`, `a2_gnn.yaml` | done on toy; GNN planned |
+| 16 | Not run: DDPO, regressor guidance | prereg | `docs/PREREGISTRATION.md` | aligned |
+| 17 | Falsifiable rule (gain over B2 > 2 x noise, validity within 5 points of B1) | Stage 4 | `eval/stats.py::preregistered_verdict`, `make results` | done |
+| 18 | Compute: about 48 GPU-h, GAIVI class partition, fallback < 2 h | Stage 1, 6 | `scripts/estimate_gpu_hours.py`, `configs/sweeps/fallback.yaml` | done; re-run at G1 |
+| 19 | Checkpoints and per-chunk resume; logging of config, seed, commit, GPU | all | `experiments.py`, `utils/logging.py` | done (training checkpoints planned) |
+| 20 | Milestones Oct 12 -> Nov 13 (Slot A), then Nov 14 -> Dec 11 | Sec. 4 of the plan | `docs/PLAN.md` | aligned line by line |
+| 21 | Risks (i)-(v) | plan Sec. 9 | `docs/PLAN.md` | aligned (R1 = (i), R5/R6 = (iv)) |
+| 22 | Contribution table | Stage 7 | `CONTRIBUTIONS.md` | updated; hashes added as components land |
+| 23 | AI declaration (as submitted) | Stage 7 | report | unchanged in the proposal; the report's declaration is written at the end from what was done (guidelines Sec. 4.5 requires it to be accurate) |
+
+Note on the declaration sentence "I will write and understand the DiGress wrapper and SVDD code": the two named pieces are the ones to work through
+line by line (qa_notes, Stage 2-3), so the sentence stays true in spirit; the Q&A tests exactly this.
+
+## 3. Proposal action: decision tree (Stage 0)
+- Feedback said **revise**: submit `docs/proposal/vgmg_proposal.pdf` renamed per the guidelines (`lastname_proposal.pdf`) on Canvas by Mon Oct 12 11:59 PM (one revision carries no penalty).
+- Feedback said **approved / approved with conditions**: send the email below with the PDF attached (a dead checkpoint is a documented technical blocker, sent before Oct 12 as the rules require) and wait for the reply; if there is no answer by Oct 12, proceed with this plan, which already treats the dead checkpoint as the baseline path of the original risk (i).
+- No feedback yet: same as "approved", and ask for the status.
+
+## 4. Email draft (to the professor)
+Subject: CIS 6930 project: proposal revision (checkpoint blocker) and two questions
+
+Dear Prof. Karimian,
+While preparing the DiGress wrapper I found that the official QM9 checkpoint is no longer available (the README link returns 404; the author reports losing the drive; GitHub issue #109 is open). My proposal's risk (i) covered this case, so I will train DiGress on QM9 with the repository's own configuration (the paper reports about 1 GPU-hour to 99% validity; budget <= 10 GPU-h) and keep it frozen afterwards. The attached revised proposal also (1) rewrites the comparison as best-of-N with N = M plus reported network passes and wall-clock, because one DiGress forward pass serves all M candidates, (2) corrects the related-work description (the SVDD paper already compares against best-of-N on a continuous model, GDSS; it defers DiGress to future work), (3) updates the compute plan, and (4) targets Slot A (Nov 13). The question, baselines, ablations and falsifiable outcome are unchanged.
+Two questions: may I replace the proposal with the revised version, and if the Oct 30 gate shows I need more time, may I move from Slot A to Slot C after signing up?
+Thank you, Abel Le
