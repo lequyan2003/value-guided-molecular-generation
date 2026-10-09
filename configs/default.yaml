@@ -1,0 +1,22 @@
+seed: 42
+device: "cuda"
+output_dir: "./results"
+
+model:
+  digress_checkpoint: "pretrained_digress.pt"  # TODO(week 1): official checkpoint path
+
+data:
+  dataset: "qm9"
+  subset_size: 10000
+
+svdd:
+  num_candidates_m: 5        # M; ablations sweep {1, 5, 10, 20}
+  reward_type: "sa"          # sa | qed | docking_proxy
+  value_fn_arch: "mlp"       # mlp | gnn
+  value_train_steps: 200
+  selection: "argmax"        # argmax | softmax
+  alpha: 0.1                 # softmax temperature
+
+smoke:
+  num_molecules: 50
+  num_rollouts: 200

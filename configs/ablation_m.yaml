@@ -1,0 +1,3 @@
+sweep:
+  svdd.num_candidates_m: [1, 5, 10, 20]
+  seed: [0, 1, 2]
