@@ -33,3 +33,5 @@ id_*
 results/smoke/
 results/value_fns/
 results/fallback/
+*.fls
+*.fdb_latexmk

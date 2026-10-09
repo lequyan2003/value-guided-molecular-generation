@@ -24,7 +24,7 @@ def main() -> None:
     hours = lambda passes_per_mol, n=N: n * passes_per_mol / B * sec * over / 3600  # noqa: E731
     total, vf_done = 0.0, set()
     for sweep in sorted(Path("configs/sweeps").glob("*.yaml")):
-        if sweep.stem == "fallback":
+        if sweep.stem in ("fallback", "h2_selection"):  # fallback is a debug run; h2 is outside the proposal
             continue
         h = 0.0
         for cfg in expand_sweep(str(sweep)):

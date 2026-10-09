@@ -2,7 +2,7 @@
 
 | Component | Origin | What I changed |
 |---|---|---|
-| DiGress backbone + QM9 checkpoint | cvignac/DiGress @ bdfa10c (MIT) | Unmodified, inference only. **Not yet integrated** (`vgmg/models/digress.py` is a stub) |
+| DiGress backbone | cvignac/DiGress @ bdfa10c (MIT), git submodule (to add) | Code and default `qm9_no_h` config unmodified. No official checkpoint exists any more (link 404, issue #109), so **I train it once (seed 0) and freeze it**; the wrapper (`vgmg/models/digress.py`, **not yet written**) adapts the posterior computation of `sample_p_zs_given_zt` |
 | SVDD algorithm | Li et al., arXiv:2408.08252; hyanan16/SVDD-molecule @ 455e4d4 read for reference only | Own batched implementation (`vgmg/rl/svdd.py`) written from the paper; ported to discrete graph diffusion |
 | Denoiser interface + NFE accounting | Mine | Batched interface, per-forward-pass counter used for compute-matched comparison (`vgmg/models/denoiser.py`) |
 | Value function (MLP, timestep input) | Standard PyTorch | Own; GNN variant planned Nov 2-8 (dropped if it fails the Nov 6 rule), not implemented yet |

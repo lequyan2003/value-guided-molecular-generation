@@ -1,12 +1,14 @@
 """DiGress wrapper (inference only). Implements ``vgmg.models.denoiser.Denoiser``.
 
-TODO(week 2, after GAIVI gate G1). Facts to verify when writing it, in this order:
-  1. Pin cvignac/DiGress @ bdfa10c; the QM9 (heavy-atom) checkpoint must load and
-     reproduce the published validity (gate G2). The README says the author lost access
-     to some checkpoints: confirm the QM9 download link still works before anything else.
-  2. Read ``sample_p_zs_given_zt``: it should do ONE network forward per parent and then
-     sample x_{t-1} from q(x_{t-1}|x_t,x0) p(x0|x_t); ``propose`` then costs 1 NFE per parent
-     for any m (this is the basis of the NFE accounting in ``denoiser.py``).
+TODO(Stage 2, Oct 19-25, see docs/PLAN.md). Verified facts (docs/VERIFICATION.md):
+  1. Pin cvignac/DiGress @ bdfa10c (git submodule). The official QM9 checkpoint link is DEAD
+     (404, issue #109): we train DiGress on QM9 with the unmodified ``qm9_no_h`` config and
+     freeze it. Gate G2: DiGress-metric validity >= 97% (paper: 99.0 valid, 96.2 unique).
+  2. ``sample_p_zs_given_zt`` does ONE network forward per call and then samples
+     x_{t-1} from sum_x0 p(x0|x_t) q(x_{t-1}|x_t,x0); ``propose`` re-implements that posterior
+     (adapted from the repo, MIT; declare in CONTRIBUTIONS.md) and draws m samples from the
+     same probabilities, so it costs 1 NFE per parent for any m. Exactness test: our
+     prob_X/prob_E must equal the repo's on the same noisy input.
   3. DiGress's own extra features (cycles, spectral) are recomputed from the noisy graph at
      every step, so ``propose`` must rebuild them for the parents only.
   4. ``features`` = atom-type histogram + bond-type histogram + node count (fixed width).

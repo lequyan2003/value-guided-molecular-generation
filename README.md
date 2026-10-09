@@ -11,7 +11,7 @@ keep the best. Contribution: sample-efficiency analysis (M) and molecular reward
 | Piece | State |
 |---|---|
 | Samplers (unguided, best-of-N, SVDD-PM, SVDD-value, random-select), value fn (MLP + timestep), rewards (SA, QED), metrics, stats, sweeps, tests | implemented, run on a toy generator |
-| DiGress wrapper (`vgmg/models/digress.py`) | **not yet** - stub raises `NotImplementedError` (week 2) |
+| DiGress | **not yet**: the official QM9 checkpoint is gone, so DiGress is trained by us first (Stage 1-2); wrapper `vgmg/models/digress.py` is a stub |
 | GNN value fn | **not yet** - planned Nov 2-8, dropped if it does not beat the MLP on validation MSE by Nov 6 |
 | Docking proxy | **not yet** - stretch, dropped if not started by Nov 6 |
 

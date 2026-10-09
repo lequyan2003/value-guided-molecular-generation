@@ -7,7 +7,7 @@ method: "svdd_value"
 
 model:
   name: "digress"                          # digress | toy (toy = smoke-test stand-in, not a generator)
-  digress_checkpoint: "pretrained_digress.pt"  # TODO(G2): official QM9 checkpoint path
+  digress_checkpoint: "digress_qm9_seed0.ckpt"  # trained by us at Stage 1-2 (official checkpoint is gone); path + SHA-256 logged
   toy_num_steps: 4
 
 data:
