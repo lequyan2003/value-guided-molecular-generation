@@ -1,5 +1,7 @@
 """Deterministic preprocessing: canonicalization and seeded split-index generation."""
 
+from __future__ import annotations
+
 import numpy as np
 
 from vgmg.utils.rdkit_utils import canonicalize

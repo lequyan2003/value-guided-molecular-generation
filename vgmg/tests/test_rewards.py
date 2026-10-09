@@ -1,5 +1,7 @@
 """Reward functions return sensible values for simple molecules."""
 
+from __future__ import annotations
+
 import pytest
 
 from vgmg.constants import SMOKE_SMILES

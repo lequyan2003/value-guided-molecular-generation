@@ -1,5 +1,7 @@
 """Load QM9 SMILES and committed split indices."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 import pandas as pd

@@ -1,5 +1,7 @@
 """Fetch QM9 (SMILES CSV from MoleculeNet). Usage: ``python -m vgmg.data.download``."""
 
+from __future__ import annotations
+
 import urllib.request
 from pathlib import Path
 

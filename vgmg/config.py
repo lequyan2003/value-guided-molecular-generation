@@ -4,6 +4,8 @@ Example:
     python scripts/smoke_test.py --config configs/smoke_test.yaml svdd.num_candidates=10 seed=1
 """
 
+from __future__ import annotations
+
 import argparse
 import copy
 from pathlib import Path

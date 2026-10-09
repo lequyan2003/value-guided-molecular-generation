@@ -1,5 +1,7 @@
 """Project-wide constants: paths, defaults, and the tiny smoke-test molecule pool."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 REPO_ROOT: Path = Path(__file__).resolve().parent.parent

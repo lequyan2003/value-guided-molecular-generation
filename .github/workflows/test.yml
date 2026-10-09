@@ -11,3 +11,14 @@ jobs:
       - run: pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
       - run: python -m pytest vgmg/tests -v
       - run: python scripts/smoke_test.py
+  compat-digress-env:
+    # DiGress was tested on Python 3.9 / torch 2.0.1; our package must run there too.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.9"}
+      - run: pip install "numpy<2" pandas pyyaml pytest rdkit==2023.3.2 torch==2.0.1 --extra-index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pytest vgmg/tests -q
+      - run: python scripts/smoke_test.py

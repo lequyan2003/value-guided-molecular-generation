@@ -1,5 +1,7 @@
 """Create committed, seeded QM9 split-index files (1k each) in data/splits/."""
 
+from __future__ import annotations
+
 import sys
 from pathlib import Path
 
