@@ -60,3 +60,26 @@ Dear Prof. Karimian,
 While preparing the DiGress wrapper I found that the official QM9 checkpoint is no longer available (the README link returns 404; the author reports losing the drive; GitHub issue #109 is open). My proposal's risk (i) covered this case, so I will train DiGress on QM9 with the repository's own configuration (the paper reports about 1 GPU-hour to 99% validity; budget <= 10 GPU-h) and keep it frozen afterwards. The attached revised proposal also (1) rewrites the comparison as best-of-N with N = M plus reported network passes and wall-clock, because one DiGress forward pass serves all M candidates, (2) corrects the related-work description (the SVDD paper already compares against best-of-N on a continuous model, GDSS; it defers DiGress to future work), (3) updates the compute plan, and (4) targets Slot A (Nov 13). The question, baselines, ablations and falsifiable outcome are unchanged.
 Two questions: may I replace the proposal with the revised version, and if the Oct 30 gate shows I need more time, may I move from Slot A to Slot C after signing up?
 Thank you, Abel Le
+
+## 5. Guidelines compliance check (CIS6930_Project_Guidelines.pdf, Sec. 1.1-1.5 and checklist), 2026-10-09
+| Requirement | Where met in `Abel_proposal.pdf` |
+|---|---|
+| 2 pages max excluding references, PDF | pages 1-2, references on page 3 (checked after the last edit) |
+| Header: title, name, 4930/6930 | title, Abel Le, graduate (6930), Path A |
+| Question: one paragraph ending "This project asks whether..." | Sec. 1, last sentence |
+| Primary paper (2021+, top venue) + 2-4 supporting, one sentence each, one gap sentence | SVDD (NeurIPS 2025); DiGress, DDPO, Gao et al., TreeDiff; Gap paragraph |
+| Method: model, loss, training procedure | DiGress (cross-entropy, trained once on QM9), value fn (MSE on 10k rollouts), selection rule |
+| Data: dataset, size, license, subset | QM9, 133,885, CC0, N = 2000 per run, 1k sanity splits |
+| Evaluation: metrics, baselines, one falsifiable sentence | Sec. 5 (B1, B2, B3; A1, A2; rule) |
+| 1.1 items: question, primary paper, own code, quantitative evaluation vs baseline, controlled ablation, failure analysis | all present; failure analysis in the Nov 23-29 row and risk (iv) |
+| Compute plan: where, access, GPU-hours with arithmetic, < 2 h single-GPU fallback | Sec. 6 |
+| Milestones: a dated line per week from approval to presentation slot | weekly rows Oct 12-18, 19-25, Oct 26-Nov 1, Nov 2-8, Nov 9-13 (Slot A), plus post-talk rows |
+| Risk and fallback in the form "if X is not working by [date], I will fall back to Y" | Sec. 8 (every item has a date or trigger date) |
+| Contribution table with pinned base commits | Sec. 9 (DiGress @ bdfa10c, SVDD-molecule @ 455e4d4) |
+| AI declaration | Sec. 10 (unchanged) |
+| Base repository declared | DiGress, SVDD-molecule named |
+| Public data, no personal data | QM9 CC0 |
+| Not "too big" (returned-proposal reason 1) | one training run of one model (about 1 h in the paper, budget <= 10 GPU-h); value fns are small regressions; shrink rules in risks (iii) |
+| Not "README end to end" / checkpoint swap | training only supplies the frozen base; the contribution is the guidance study (stated in Sec. 3) |
+| File name `lastname_proposal.pdf` | repo name is `Abel_proposal.pdf`; rename on upload to `Le_proposal.pdf` to follow the guidelines literally |
+Milestone note: the proposal's weekly rows are split by calendar week; the plan splits the same work into Stage 3 (Oct 26-30) and Stage 4 (Oct 31-Nov 8) around the Oct 30 gate, with identical content and dates.
