@@ -48,6 +48,9 @@ class Denoiser(Protocol):
     def decode(self, state: State) -> list[str]:
         """Decode final states x_0 to SMILES (invalid -> a string that fails validity checks)."""
 
+    def encode(self, smiles: Sequence[str]) -> State:
+        """Inverse of ``decode`` for real molecules (clean graphs at t = 0); used for the t=0 sanity check."""
+
 
 class ToyDenoiser:
     """Smoke-test stand-in for DiGress. NOT a real generative model.
@@ -97,3 +100,7 @@ class ToyDenoiser:
     def decode(self, state: list[str]) -> list[str]:
         """States are already SMILES."""
         return list(state)
+
+    def encode(self, smiles: Sequence[str]) -> list[str]:
+        """States are already SMILES."""
+        return list(smiles)

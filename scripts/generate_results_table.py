@@ -22,14 +22,22 @@ def main() -> None:
     if not runs:
         raise SystemExit(f"No summary.json files found under {logs}")
     rows = runs_to_rows(runs)
+    commits = sorted({r.get("git_commit", "unknown") for r in runs})
+    if len(commits) > 1 or any(c.endswith("-dirty") or c == "unknown" for c in commits):
+        print(f"WARNING: runs come from {len(commits)} commits (dirty/unknown present: "
+              f"{any(c.endswith('-dirty') or c == 'unknown' for c in commits)}). Headline runs must come from one clean commit:", commits)
     table = summarize(rows).sort_values(["reward", "method", "M"])
     out = logs.parent / "tables"
     out.mkdir(exist_ok=True)
     table.to_csv(out / "summary.csv", index=False)
     cols = ["method", "reward", "M", "n_seeds", "reward_mean", "reward_mean_std", "validity", "validity_std",
-            "diversity", "nfe_per_molecule"]
+            "diversity", "nfe_per_molecule", "gpus"]
     (out / "summary.tex").write_text(to_latex(table, cols))
-    verdicts = [headline_verdict(rows, logs, r) for r in sorted(rows.reward.unique())]
+    verdicts = [headline_verdict(rows, logs, r, seeds=sd) | {"seed_set": name}
+                for r in sorted(rows.reward.unique()) for name, sd in (("all", None), ("0-2 (proposal)", [0, 1, 2]))]
+    mixed = table[table["gpus"].str.contains(r"\+")]
+    if len(mixed):
+        print("WARNING: rows mix GPU types, wall-clock is not comparable there:", mixed[["method", "reward", "M", "gpus"]].to_dict("records"))
     (out / "verdict.json").write_text(json.dumps(verdicts, indent=2))
     print(table[cols].to_string(index=False))
     print(json.dumps(verdicts, indent=2))

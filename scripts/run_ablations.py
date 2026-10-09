@@ -33,13 +33,11 @@ def main() -> None:
     from vgmg.experiments import make_run_id, run_experiment
     sweep_path = sys.argv[1] if len(sys.argv) > 1 else "configs/sweeps/a1_m_sweep.yaml"
     configs = expand_sweep(sweep_path, sys.argv[2:])
-    done = 0
-    print(f"{len(configs)} runs in {sweep_path}")
+    print(f"{len(configs)} grid points in {sweep_path} (finished runs are skipped)")
     for cfg in configs:
         existed = (Path(cfg["output_dir"]) / "logs" / make_run_id(cfg) / "summary.json").exists()
         run_experiment(cfg)
-        done += not existed
-    print(f"ran {done} new, {len(configs) - done} already finished")
+        print(f"  {make_run_id(cfg)}: {'reused' if existed else 'ran'}")
 
 
 if __name__ == "__main__":

@@ -26,7 +26,7 @@ def runs_to_rows(runs: list[dict]) -> pd.DataFrame:
             if r["reward"] not in (None, reward):
                 continue  # a guided run is only evaluated under the reward it optimised
             rows.append({"method": r["method"] + (f"_{r['selection']}" if r["selection"] == "softmax" else ""),
-                         "reward": reward, "M": r["M"], "seed": r["seed"], "run_id": r["run_id"],
+                         "reward": reward, "M": r["M"], "seed": r["seed"], "run_id": r["run_id"], "gpu": r.get("gpu", "unknown"),
                          "nfe_per_molecule": r["nfe_per_molecule"],
                          "wall_s_per_1k": 1000 * r["sample_wall_clock_s"] / r["num_molecules"],
                          **{c: m[c] for c in METRIC_COLS}})
@@ -37,7 +37,8 @@ def summarize(rows: pd.DataFrame) -> pd.DataFrame:
     """Mean and sample std across seeds for each (method, reward, M); ``n_seeds`` shows the evidence."""
     out = []
     for (method, reward, M), g in rows.groupby(["method", "reward", "M"]):
-        rec = {"method": method, "reward": reward, "M": M, "n_seeds": g["seed"].nunique()}
+        rec = {"method": method, "reward": reward, "M": M, "n_seeds": g["seed"].nunique(),
+               "gpus": "+".join(sorted(g["gpu"].unique()))}
         for c in METRIC_COLS + ["nfe_per_molecule", "wall_s_per_1k"]:
             mu, sd = mean_std(g[c].tolist())
             rec[c], rec[c + "_std"] = mu, sd
@@ -56,17 +57,21 @@ def _per_molecule(logs_dir: Path, run_ids: dict[int, str], reward: str) -> dict[
 
 
 def headline_verdict(rows: pd.DataFrame, logs_dir: str | Path, reward: str, M: int = 10,
-                     method: str = "svdd_value", baseline: str = "best_of_n") -> dict:
-    """Apply the pre-registered rule: ``method`` vs ``baseline`` at ``M`` for ``reward``, paired by seed."""
+                     method: str = "svdd_value", baseline: str = "best_of_n",
+                     seeds: list[int] | None = None) -> dict:
+    """Apply the pre-registered rule: ``method`` vs ``baseline`` at ``M`` for ``reward``, paired by seed.
+
+    ``seeds=None`` uses every seed present for both methods (0-4 once the extra seeds are run).
+    """
     logs_dir = Path(logs_dir)
     sel = rows[(rows.reward == reward) & (rows.M == M)]
     a, b = sel[sel.method == method].set_index("seed"), sel[sel.method == baseline].set_index("seed")
-    seeds = sorted(set(a.index) & set(b.index))
+    seeds = sorted(set(a.index) & set(b.index) & (set(seeds) if seeds else set(a.index)))
     if len(seeds) < 3:
         return {"reward": reward, "M": M, "status": f"insufficient paired seeds ({len(seeds)} < 3)"}
     v = preregistered_verdict(a.loc[seeds, "reward_mean"].tolist(), b.loc[seeds, "reward_mean"].tolist(),
                               a.loc[seeds, "validity"].tolist(), b.loc[seeds, "validity"].tolist())
     lo, hi = paired_bootstrap_ci(_per_molecule(logs_dir, a.loc[seeds, "run_id"].to_dict(), reward),
                                  _per_molecule(logs_dir, b.loc[seeds, "run_id"].to_dict(), reward))
-    return {"reward": reward, "M": M, "method": method, "baseline": baseline, "seeds": seeds,
+    return {"reward": reward, "M": M, "method": method, "baseline": baseline, "seeds": [int(x) for x in seeds],
             "bootstrap_ci95": [lo, hi], **v}
