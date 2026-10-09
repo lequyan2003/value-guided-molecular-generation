@@ -1,0 +1,87 @@
+\documentclass[10pt]{article}
+\usepackage[letterpaper,margin=0.7in,top=0.6in,bottom=0.6in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{microtype,array,booktabs,enumitem,amsmath,amssymb,xcolor}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[colorlinks,allcolors=blue!50!black]{hyperref}
+\usepackage[compact]{titlesec}
+\titleformat{\section}{\large\bfseries}{\thesection}{0.5em}{}
+\titlespacing*{\section}{0pt}{5pt}{2pt}
+\setlist{nosep,leftmargin=1.2em}
+\setlength{\parindent}{0pt}\setlength{\parskip}{2pt}
+\setlength{\bibsep}{0pt}
+\renewcommand{\bibfont}{\footnotesize}
+\newcommand{\acc}{I already have a GAIVI account}
+\newcommand{\Gt}{G_t}
+
+\begin{document}
+\begin{center}
+{\Large\bfseries Soft Value-Based Decoding for Guided Molecular Generation\\[-1pt] on a Frozen Graph-Diffusion Model}\\[3pt]
+Abel Le \quad$\cdot$\quad CIS 6930 Generative AI, Fall 2026 \quad$\cdot$\quad \textbf{Enrollment: graduate (6930)} \quad$\cdot$\quad Path A (own topic)
+\end{center}
+\vspace{-4pt}
+
+\section{Question}
+Reward-guided generation usually fine-tunes the generator (e.g., RL fine-tuning of diffusion models~\cite{black2024ddpo}), which is costly and needs differentiable or on-policy training. Soft Value-Based Decoding (SVDD)~\cite{li2024svdd} instead steers a frozen diffusion model at inference time: at every reverse step it draws $M$ candidates, scores each with a learned value function, and keeps one. Whether this works for \emph{discrete graph} diffusion on molecules, and whether its extra per-step compute beats the simplest alternative of spending the same compute on independent samples and keeping the best, is untested.
+\textbf{This project asks whether SVDD with a learned value function, applied to a frozen pretrained DiGress model, raises the mean synthetic-accessibility and QED reward of generated QM9 molecules more than best-of-$N$ sampling at an equal number of denoiser evaluations, without lowering validity, and how that advantage scales with the number of candidates $M$.}
+
+\section{Primary Paper and Background}
+\textbf{Primary:} SVDD~\cite{li2024svdd} shows that a soft value function $v_t(x_t)=\alpha\log\mathbb{E}[e^{r(x_0)/\alpha}\mid x_t]$ lets a pretrained diffusion model sample from a reward-tilted distribution with no fine-tuning, on images, DNA/RNA and molecules.
+\textbf{Supporting:} DiGress~\cite{vignac2023digress} is a discrete graph diffusion model whose denoiser predicts clean atom and bond types, with released QM9 weights. DDPO~\cite{black2024ddpo} is the fine-tuning route to reward optimization that SVDD avoids. Gao et al.~\cite{gao2023overopt} show that best-of-$n$ selection is a strong, compute-matched reward-optimization baseline, which motivates my comparison.
+\textbf{Gap:} the SVDD authors' molecule code (\texttt{hyanan16/SVDD-molecule}) documents a separate pipeline (docking-style rewards), not DiGress or QM9, and I know of no SVDD-vs-best-of-$N$ comparison at matched denoiser calls on a discrete graph model. I measure exactly that. This is new work started this semester, not prior research.
+
+\section{Method}
+\textbf{Pipeline (all inference-time; DiGress weights frozen).} (1)~\emph{Proposal:} a thin wrapper around the DiGress QM9 checkpoint exposes $p_\theta(G_{t-1}\mid\Gt)=\sum_{G_0}q(G_{t-1}\mid\Gt,G_0)\,p_\theta(G_0\mid\Gt)$ and returns $M$ i.i.d.\ candidates per molecule per step ($T{=}500$). DiGress was trained with cross-entropy on node/edge types and is not retrained. (2)~\emph{Value function} $\hat v_\phi(\Gt,t)$, trained by MSE regression onto $r(G_0)$ using 10k unguided rollouts (the SVDD-MC estimator); two architectures: an MLP on pooled atom/bond-type histograms plus a timestep embedding, and a 3-layer message-passing GNN on the (soft) graph. (3)~\emph{Selection:} keep $\arg\max_m \hat v_\phi(G_{t-1}^{(m)})$ (or sample $\propto e^{\hat v/\alpha}$). A training-free variant, SVDD-PM, scores a candidate by $r(\hat G_0)$ of its decoded denoiser prediction. (4)~\emph{Rewards:} SA $=(10-\mathrm{SA})/9$~\cite{ertl2009sa} and QED~\cite{bickerton2012qed} via RDKit, invalid $\to 0$. Value functions are trained per reward. \textbf{Stretch:} a docking-proxy reward, dropped if not started by Nov 6 (see Risks).
+
+\section{Data}
+QM9~\cite{ramakrishnan2014qm9}: 133{,}885 molecules (up to 9 heavy atoms; MoleculeNet CSV copy), public, released under CC0 on figshare, no personal data. The pretrained DiGress model already encodes QM9, so I \emph{generate} molecules rather than train on them; QM9 is used as the novelty reference and for three seeded (42), disjoint 1k-molecule index splits (train/val/test, committed) used to sanity-check reward code and value-function predictions at $t{=}0$. Value-function training data are unguided DiGress trajectories, so no test molecule leaks into training. Each evaluation run generates $N{=}2{,}000$ molecules.
+
+\section{Evaluation Plan}
+\textbf{Metrics:} mean and top-10\% reward, validity (RDKit-sanitizable, connected), uniqueness, novelty vs.\ QM9, diversity (mean pairwise ECFP4 Tanimoto distance), denoiser calls and wall-clock. \textbf{Seeds:} 0, 1, 2; report mean$\pm$std. \textbf{Baselines:} (B1) unguided DiGress ($M{=}1$); (B2) \emph{best-of-$N$ at matched compute}: generate $M$ unguided molecules per slot and keep the highest-reward one, so cost equals SVDD with the same $M$; (B3) SVDD-PM without a learned value. \textbf{Controlled comparisons:} (A1)~$M\in\{1,5,10,20\}$ for SA and QED; (A2)~value estimator $\in\{$PM, MLP, GNN$\}$ at $M{=}10$. I will not run DDPO-style fine-tuning (needs training, outside the budget) or DiGress's own regressor guidance (it needs a retrained property regressor and is a different question).
+\textbf{Falsifiable outcome:} the hypothesis is wrong if, at $M{=}10$, SVDD-MLP's mean-reward gain over B2 is not larger than twice the across-seed standard deviation, \emph{or} if SVDD reaches its gain only with validity more than 5 points below B1. A null or negative result will be reported and analyzed.
+
+\section{Compute Plan}
+\textbf{Where:} GAIVI (Slurm batch, scripts in repo), Colab/local GPU as backup; \acc{} and will run a first trivial job in week 1. \textbf{Estimate} $=(\text{steps}\times\text{s/step})/3600\times\text{runs}$, with $T{=}500$ steps, batches of 512 graphs, an assumed 0.1 s per batch-step (QM9 graphs have $\le$9 nodes; \emph{to be measured in week 1}) and a 1.5$\times$ overhead for featurizing and scoring candidates.
+Main sweep: $2000\!\times\!(1{+}5{+}10{+}20)=72$k graphs $\to$ 141 batches; $141\!\times\!500\!\times\!0.1\!\times\!1.5/3600=2.9$\,h per (reward, seed); $\times$ 2 rewards $\times$ 3 seeds $=17.4$\,h.
+Value-fn data (10k rollouts, $20\!\times\!500\!\times\!0.1/3600=0.28$\,h) $\times$ 3 seeds $=0.8$\,h; value-fn training $0.5$\,h $\times$ 12 (2 rewards, 2 archs, 3 seeds) $=6$\,h.
+A2 ablation: 2000$\times$10 graphs $\to$ 0.83\,h per run; 2 new variants (PM, GNN) $\times$ 2 rewards $\times$ 3 seeds $=10$\,h.
+B2: $2000\times35=70$k graphs $\to$ $137\!\times\!500\!\times\!0.1/3600=1.9$\,h per seed, reward-independent, $\times3=5.7$\,h.
+Total $\approx 40$\,h; with a 25\% rerun margin, \textbf{$\approx$50 GPU-hours}.
+\textbf{Single-GPU fallback ($<$2\,h):} $N{=}1000$, $M\in\{1,10\}$, one seed, MLP value, SA reward: $11$k graphs $\approx0.5$\,h plus 1k rollouts and training $\approx0.2$\,h. Checkpoints are written every 50 batches; every run logs config, seed, git commit and metrics.
+
+\section{Milestones (approval Oct 12 $\to$ presentation, targeting Slot C, Fri Dec 4)}
+\begin{tabular}{@{}p{1.15in}p{5.7in}@{}}
+Oct 12--18 & Run first trivial GAIVI job; pin DiGress/SVDD commits; load QM9 checkpoint and reproduce DiGress validity; measure s/batch-step.\\
+Oct 19--25 & Finish \texttt{propose()} wrapper; B1 unguided baseline over 3 seeds; SVDD-PM end to end.\\
+Oct 26--Nov 1 & Collect rollouts; train MLP value fn; complete the $<$2\,h fallback run.\\
+Nov 2--8 & GNN value fn; \textbf{Nov 6 check-in and go/no-go} on GNN and docking proxy.\\
+Nov 9--15 & Main $M$ sweep (A1), SA and QED, 3 seeds.\\
+Nov 16--22 & B2 best-of-$N$ and value-estimator ablation (A2); first full results table.\\
+Nov 23--29 & Failure analysis (where the value fn mis-ranks), figures, seed variance checks.\\
+Nov 30--Dec 4 & Slides, rehearse code walk-through; \textbf{present Dec 4}. Report and code due Dec 11.\\
+\end{tabular}
+
+\section{Risk and Fallback}
+(i)~If the DiGress QM9 checkpoint (hosted on a personal drive) cannot be loaded or reproduce validity by Oct 25, I will train a reduced DiGress on QM9 with the repository's training script (budget $\le$10 extra GPU-h). (ii)~If the GNN value function does not beat the MLP on validation MSE by Nov 6, I drop it and keep PM vs.\ MLP as ablation A2. (iii)~If measured s/batch-step is more than 3$\times$ my estimate, I cut $N$ to 1000 and the $M$ grid to $\{1,10,20\}$ so the total stays near 50 GPU-h. (iv)~If SVDD does not beat B2, the deliverable becomes a negative-result analysis of the value function's ranking error.
+
+\section{Contribution Table (full version in \texttt{CONTRIBUTIONS.md})}
+\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.15in}>{\raggedright\arraybackslash}p{2.75in}>{\raggedright\arraybackslash}p{3.0in}@{}}
+\toprule
+Component & Origin & What I changed\\\midrule
+DiGress model & \texttt{cvignac/DiGress} @ \texttt{bdfa10c} (MIT), QM9 checkpoint & Weights and architecture unmodified; added a candidate-proposal wrapper (\texttt{vgmg/models/digress.py})\\
+SVDD algorithm & Li et al.~\cite{li2024svdd}; \texttt{hyanan16/SVDD-molecule} @ \texttt{455e4d4} read for reference only & Own implementation from the paper (\texttt{vgmg/rl/svdd.py}); ported to discrete graph diffusion\\
+Value functions & Mine & MLP, GNN, and PM estimators; training loop\\
+Rewards, metrics & RDKit QED; SA score from RDKit Contrib & Own wrappers and rescaling; validity/novelty/diversity code is mine\\
+Best-of-$N$, ablation harness & Mine & Compute-matched baseline; sweep scripts and logging\\
+\bottomrule
+\end{tabular}
+\normalsize
+
+\section{AI Tool Declaration}
+I used Claude Code to scaffold the repository, draft unit tests, and edit this proposal. The research question, experimental design, baselines, and ablation choices are mine; I will write and understand the DiGress wrapper and SVDD code, and all reported numbers will come from my own runs.
+
+{\small
+\bibliographystyle{plainnat}
+\bibliography{refs}}
+\end{document}
