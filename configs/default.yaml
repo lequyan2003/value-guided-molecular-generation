@@ -15,8 +15,8 @@ data:
 
 svdd:
   num_candidates_m: 10                     # M; sweeps use {1, 5, 10, 20}
-  reward_type: "sa"                        # sa | qed  (docking_proxy is tier T3)
-  value_fn_arch: "mlp"                     # mlp (gnn is tier T3)
+  reward_type: "sa"                        # sa | qed  (docking_proxy is a stretch goal)
+  value_fn_arch: "mlp"                     # mlp (gnn: planned Nov 2-8, dropped if it fails the Nov 6 rule)
   selection: "argmax"                      # argmax | softmax
   alpha: 0.1                               # softmax temperature
 
@@ -30,6 +30,9 @@ value_fn:                                  # trained once per (model, reward, ar
   hidden_dim: 128
   num_hidden: 2
   eval_every: 100
+
+best_of_n:
+  m_values: [5, 10, 20]                    # one pool per seed yields best-of-m for every m and reward
 
 eval:
   num_molecules: 2000                      # N per run (proposal)

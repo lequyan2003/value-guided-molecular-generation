@@ -1,3 +1,3 @@
-# A1: SVDD with learned value, scaling in M (seeds 0-4 so the headline M=10 point has 5 seeds).
+# A1: SVDD with learned value, scaling in M. Seeds 0-2 as in the proposal.
 base: {method: svdd_value}
-sweep: {svdd.reward_type: [sa, qed], svdd.num_candidates_m: [1, 5, 10, 20], seed: [0, 1, 2, 3, 4]}
+sweep: {svdd.reward_type: [sa, qed], svdd.num_candidates_m: [1, 5, 10, 20], seed: [0, 1, 2]}

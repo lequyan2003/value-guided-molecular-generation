@@ -6,3 +6,4 @@ data: {reference: "smoke"}
 svdd: {num_candidates_m: 5, reward_type: "sa"}
 value_fn: {train_chains: 200, val_chains: 100, ts_per_chain: 4, train_steps: 300, eval_every: 50, hidden_dim: 64, num_hidden: 1}
 eval: {num_molecules: 100, batch_size: 50}
+best_of_n: {m_values: [5]}
