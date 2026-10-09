@@ -16,7 +16,7 @@ the gain scale with M?
   Secondary: `reward_top10`, `reward_mean_valid`, uniqueness, novelty (vs full QM9), diversity (ECFP4).
 - **SA reward** = (10 - SA)/9; **QED** from RDKit. Both in [0,1].
 - **Seed** controls value-function rollouts, network init and evaluation sampling through independent
-  streams (`seed_streams`). Sweeps use seeds 0-4; the value function is retrained per seed.
+  streams (`seed_streams`). Sweeps use seeds 0-2 (as proposed); the headline point (M=10: SVDD-MLP, best-of-10, B1) additionally runs seeds 3-4, decided now and run whatever seeds 0-2 show. The value function is retrained per seed.
 
 ## Comparisons
 | Id | Method | Role |
@@ -41,16 +41,29 @@ is candidate-matched (M = N = 10); the cost-axis plots decide how it is worded i
 Value-function training cost (rollouts + fitting) is reported separately and amortised over
 the 2000 molecules of that run.
 
-## Primary decision rule (per reward, M = 10, paired by seed)
+## Primary decision rule (per reward, M = 10, paired by seed, all seeds 0-4)
 SVDD-MLP **beats** B2 iff
 1. mean over seeds of (SVDD reward_mean - B2 reward_mean) > 2 x noise, where
    noise = max(std over seeds of SVDD per-seed means, std over seeds of B2 per-seed means), AND
 2. mean validity of SVDD >= mean validity of B1 - 0.05 (absolute).
 
-Reported alongside (not part of the rule): a paired bootstrap 95% CI over molecules within seeds
+The verdict is also reported on seeds 0-2 alone (the proposal's design); if the two verdicts differ, both are shown and the 5-seed one is primary. Reported alongside (not part of the rule): a paired bootstrap 95% CI over molecules within seeds
 (seeds fixed), and all per-seed values. A claim is made only if rule 1 and 2 hold; if the CI
 includes 0 while rule 1 holds, the report says so. Failing the rule is reported as a
 negative result and analysed with H1-H3.
+
+## Wall-clock
+Comparable only among runs on the same GPU type (recorded per run; `make results` warns on mixed GPUs). Headline runs target
+the ClsGenAI Titan RTX. GPU kernels are not bit-deterministic: CPU runs reproduce exactly, GPU reruns reproduce up to
+floating-point nondeterminism (reported tolerance to be measured at G1 by rerunning one run).
+
+## Reward-hacking check
+A guided method whose mean reward exceeds the top-10% of real QM9 (`qm9_reference.json`: SA 0.825, QED 0.578) or whose diversity/novelty
+collapses is inspected (smallest-molecule collapse) before any claim; diversity and novelty are always reported next to reward.
+
+## Sanity checks that gate the experiments
+S1 reward code on real QM9 test split (done: SA mean 0.631, QED 0.466). S2 value function at t=0 on held-out real molecules
+(`value_fn_t0_check`: Spearman with true reward must be clearly positive, else the featurizer is wrong). S3 M=1 SVDD equals unguided.
 
 ## Mechanism hypotheses (for explaining the result either way)
 - **H1** value function ranks siblings poorly at large t: report validation MSE vs the constant

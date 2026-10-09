@@ -37,8 +37,8 @@ control), reasons for comparisons not run (in the pre-registration), 12-20 refer
 |---|---|---|
 | T0 (done) | pipeline on a toy generator, all methods, tests, smoke test | Oct 9 |
 | T1 floor | DiGress loads + reproduces validity; B1, B2, SVDD-PM, SA reward, 3 seeds, M in {1,10} | Nov 1 |
-| T2 target | + MLP value fn, QED, M in {1,5,10,20}, estimator ablation, H1 diagnostics, seeds 0-4 at M=10 | Nov 22 |
-| T3 stretch | GNN value fn, docking proxy, alpha study | only if gate G4 = go |
+| T2 target (the proposal) | + MLP value fn, QED, M in {1,5,10,20}, A2 with PM, MLP **and GNN** (GNN dropped if it fails the Nov 6 rule), H1 diagnostics, seeds 3-4 at M=10 | Nov 22 |
+| T3 stretch | docking proxy, alpha study (H2) | only if time remains after T2 |
 
 ## 4. Schedule with gates
 
@@ -47,26 +47,27 @@ Slot: **C (Fri Dec 4)**. Waiting until Oct 23 costs nothing (C is the default).
 | Week | Work | Gate |
 |---|---|---|
 | Oct 9-12 | Confirm proposal approval (revise by Oct 12 11:59 PM if asked; fix the "equal denoiser evaluations" wording, see pre-registration). Read SVDD paper (Alg. 1, estimators) + DiGress `sample_p_zs_given_zt`. Commit pre-registration | approval |
-| Oct 12-18 | GAIVI: connection, sync, **environment** (DiGress needs Python 3.9, torch 2.0.1+cu118, torch_geometric 2.3.1, rdkit 2023.03.2; our code is 3.9-compatible and CI checks it), run `make smoke-test` on a `ClsGenAI` node. Confirm the QM9 checkpoint download works. Measure s/batch-step, VRAM; verify 1 forward per parent | **G1:** GPU job ran, timing + NFE claim verified; recompute GPU-hours |
+| Oct 12-18 | GAIVI: connection, sync, **environment** (DiGress needs Python 3.9, torch 2.0.1+cu118, torch_geometric 2.3.1, rdkit 2023.03.2; our code is 3.9-compatible and CI checks it), run `make smoke-test` on a `ClsGenAI` node. Confirm the QM9 checkpoint download works. **Run DiGress's own sampling script with the checkpoint (no wrapper yet)**: validity with its metric and ours, s/batch-step, VRAM; verify 1 forward per parent; rerun one job to measure GPU nondeterminism; run `scripts/estimate_gpu_hours.py` with the measured s/step; run `make fallback` plumbing on toy | **G1:** GPU job ran, timing + NFE claim verified; recompute GPU-hours |
 | Oct 19-25 | `DiGressDenoiser` (init/propose/take/features/predict_x0/decode). Reproduce published QM9 validity (compare with the paper's number; ours is stricter, expect small gap, document). B1 over seeds | **G2 (Oct 25):** wrapper works and validity reproduced; else Risk (i) |
 | Oct 26-Nov 1 | Value fn on real rollouts, diagnostics (val MSE vs constant, Spearman by t); B2; SVDD-PM; <2 h fallback run | **G3:** T1 reached, table committed |
-| Nov 2-8 | SVDD-value SA/QED; `sibling_ranking` (H1); office-hours check-in with G1-G3 numbers | **G4 (Nov 6):** GNN/docking go/no-go. Default no-go |
-| Nov 9-15 | Sweeps b1, b2, a1 (resumable: `make sweep SWEEP=...`) | **G5:** all a1 runs have `summary.json` |
-| Nov 16-22 | a2, h2, `make results`, first full table, cost-axis plots | **T2 reached.** Then only experiments that explain results |
+| Nov 2-8 | SVDD-value SA/QED; implement GNN value fn (as promised); `sibling_ranking` (H1); t=0 check S2; switch report to the two-column CVPR/NeurIPS template; office-hours check-in with G1-G3 numbers | **G4 (Nov 6):** GNN kept only if it beats the MLP on validation MSE (proposal risk ii); docking dropped if not started |
+| Nov 9-15 | Sweeps in priority order: b1 -> a1 -> b2 -> extra_seeds_* (`make headline`; resumable) | **G5:** all a1 runs have `summary.json` |
+| Nov 16-22 | a2 (+ a2_gnn if kept), h2, `make results`, first full table, cost-axis plots | **T2 reached.** Then only experiments that explain results |
 | Nov 23-29 | Failure analysis (H1-H3), figures, seed checks, reruns | results frozen Nov 29 |
 | Nov 30-Dec 3 | Slides (due the night before), 2 timed rehearsals, Q&A drill | slides uploaded Dec 3 |
 | Dec 4 | Present | |
 | Dec 5-10 | Report from frozen numbers, clean-clone test, AI declaration | submit by Dec 10 (Dec 11 deadline) |
 
 ## 5. Compute
-
-Per-run cost is far below the proposal's estimate because children share one forward pass (to verify at G1):
-SVDD-MLP ~ T passes, SVDD-PM ~ (M+1)T, best-of-N = M·T. Dominant cost: B2 (35 chains per slot over M in {5,10,20})
-and SVDD-PM. Recompute with the measured s/batch-step at G1. Shrink order if needed: seeds 3-4 only for M=10, then
-drop M=20, then N=1000. Priority partition `ClsGenAI`; class partition ends ~mid Dec, all runs done by Nov 29.
+`python scripts/estimate_gpu_hours.py <measured s/step>` applies the proposal's formula with corrected pass counts
+(SVDD-value T, SVDD-PM (M+1)T, best-of-N M·T, B2 pooled once per seed). With the proposal's assumptions (0.1 s, 1.5x) it gives
+~32 h, ~40 h with a 25% margin, below the 50 GPU-h in the proposal. Re-run at G1 with the measured value and paste the table
+into the report. Shrink order if over budget: drop extra seeds 3-4, then the proposal's rule (iii): N=1000 and M in {1,10,20}.
+Submit in the order of `make headline` so that the minimum viable table (b1, a1, b2) exists first. Partition `ClsGenAI`
+(ends ~mid Dec); everything finishes by Nov 29. Single-GPU fallback: `make fallback` (< 2 h).
 
 ## 6. Experiment matrix
-Defined by `configs/sweeps/*.yaml` (b1, b2, a1, a2, h2, t3). Each run writes config, seed, commit, GPU, NFE,
+Defined by `configs/sweeps/*.yaml` (b1, b2, a1, a2, a2_gnn, h2, extra_seeds_*, fallback). The line-by-line link to the proposal is `docs/PROPOSAL_ALIGNMENT.md`. Each run writes config, seed, commit, GPU, NFE,
 wall-clock, metrics, per-molecule rewards. `make results` produces `summary.csv/.tex` and `verdict.json`.
 
 ## 7. Setup status (what was fixed 2026-10-09)
@@ -78,12 +79,13 @@ invalid = 0; stats (mean/std, paired bootstrap, verdict rule); deterministic res
 aggregation script; QM9 splits + real-data reward reference; notebooks removed until there are results; job scripts
 on `ClsGenAI`; Python 3.9-compatible code; 27 tests.
 
-Still to do (needs the cluster or the checkpoint): `DiGressDenoiser`; GNN value fn (T3); docking proxy (T3);
-report template switch to two-column CVPR/NeurIPS; fill CONTRIBUTIONS commit hashes as components land.
+Still to do (needs the cluster or the checkpoint): `DiGressDenoiser` (+ `encode` for the t=0 check); GNN value fn (Nov 2-8, promised);
+docking proxy (stretch); report template switch to two-column CVPR/NeurIPS (Nov 2-8); update the AI declaration (see alignment row 24);
+fill CONTRIBUTIONS commit hashes as components land.
 
 ## 8. Risk ladder
-(i) checkpoint missing/not loading by G2 -> train reduced DiGress (<=10 GPU-h) and say so; (ii) GNN does not beat MLP
--> drop; (iii) timing >3x -> shrink order in section 5; (iv) SVDD does not beat B2 -> negative-result analysis
+(i) checkpoint missing/not loading by G2 -> train reduced DiGress (<=10 GPU-h) and say so; (ii) GNN does not beat MLP on validation MSE by Nov 6
+-> drop (A2 = PM vs MLP); (iii) timing >3x -> shrink order in section 5 (proposal: N=1000, M in {1,10,20}); (iv) SVDD does not beat B2 -> negative-result analysis
 (H1-H3); (v) DiGress env cannot coexist with torch 2.14 -> keep two envs, our package runs in both.
 
 ## 9. Operating rules
@@ -109,7 +111,10 @@ the GPU job ledger.
 7. **Env mismatch** (repo Python 3.12/torch 2.14 vs DiGress 3.9/torch 2.0.1) was unplanned. Code made 3.9-compatible; env task at G1.
 8. **Sweep configs were broken stubs** (docking_proxy, NotImplementedError dispatcher, no resume). Replaced.
 9. **Plan said "write core code yourself"**; AI use is allowed. Replaced by the explain-it rule and `qa_notes.md`.
-10. **Open risks not yet closed:** checkpoint availability (author lost Drive access); value-fn distribution shift (unguided -> guided); histogram features are lossy; B2 uses an oracle selector. All listed as stated approximations.
+10. **Plan/proposal drift:** GNN had been demoted to optional, the <2 h fallback had no config, "checkpoint every 50 batches" was only run-level, and B2 recomputed identical chains per reward (3x waste). Fixed: `docs/PROPOSAL_ALIGNMENT.md` maps all 24 commitments to code; GNN back on the Nov 2-8 schedule; `fallback.yaml`; per-chunk resume; pooled B2.
+11. **Stale-cache and provenance holes:** value-fn cache ignored its config (now hashed); results did not record the git commit or detect mixed/dirty commits and mixed GPU types (now recorded and warned by `make results`).
+12. **Figures were unplanned code:** `scripts/make_figures.py` generates every figure from run records.
+13. **Open risks not yet closed:** checkpoint availability (author lost Drive access); value-fn distribution shift (unguided -> guided); histogram features are lossy; B2 uses an oracle selector. All listed as stated approximations.
 
 ## Gate log
 | Gate | Date | Status | Notes |

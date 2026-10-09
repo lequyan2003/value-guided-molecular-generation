@@ -12,7 +12,8 @@ keep the best. Contribution: sample-efficiency analysis (M) and molecular reward
 |---|---|
 | Samplers (unguided, best-of-N, SVDD-PM, SVDD-value, random-select), value fn (MLP + timestep), rewards (SA, QED), metrics, stats, sweeps, tests | implemented, run on a toy generator |
 | DiGress wrapper (`vgmg/models/digress.py`) | **not yet** - stub raises `NotImplementedError` (week 2) |
-| GNN value fn, docking proxy | **not yet** - tier T3, only if gate G4 says go |
+| GNN value fn | **not yet** - planned Nov 2-8, dropped if it does not beat the MLP on validation MSE by Nov 6 |
+| Docking proxy | **not yet** - stretch, dropped if not started by Nov 6 |
 
 The **smoke test uses `ToyDenoiser`, a stand-in that is not a generative model**; its numbers only show the
 pipeline runs and is reproducible. They are not research results.
@@ -49,6 +50,11 @@ make results                                  # -> results/tables/{summary.csv,s
 ```
 Sweeps: `b1_unguided`, `b2_best_of_n`, `a1_m_sweep`, `a2_estimator`, `h2_selection`, `t3_gnn`. Real runs need the DiGress
 wrapper (`model.name=digress`). The analysis rule is fixed in [docs/PREREGISTRATION.md](docs/PREREGISTRATION.md).
+
+## Environments
+Dev/CI: `requirements.txt` (pinned, CPU torch). DiGress was tested on Python 3.9, PyTorch 2.0.1 (CUDA 11.8), torch_geometric 2.3.1,
+rdkit 2023.03.2; this package avoids 3.10-only syntax so it can run in that environment (CI job `compat-digress-env`). The cluster
+environment is built and verified at gate G1 (see `docs/PLAN.md`); record the exact versions here once it works.
 
 ## Layout
 
