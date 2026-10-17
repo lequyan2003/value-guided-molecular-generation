@@ -1,0 +1,3 @@
+[submodule "third_party/DiGress"]
+	path = third_party/DiGress
+	url = https://github.com/cvignac/DiGress

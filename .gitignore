@@ -35,3 +35,7 @@ results/value_fns/
 results/fallback/
 *.fls
 *.fdb_latexmk
+
+# DiGress staging data and runs (large)
+data/digress_qm9/
+results/digress_qm9/
