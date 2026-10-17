@@ -47,7 +47,7 @@ Checked 2026-10-09 against primary sources (paper PDFs, repository source, APIs)
 
 ## Course rules (guidelines PDF)
 Slot A = Fri Nov 13: bar is "working pipeline, main result, one baseline; ablations may be planned; preliminary numbers labeled".
-Slides due 11:59 PM the night before (Nov 12). Slot sign-up opens Oct 13, closes Oct 23 (default Slot C). Timing may be re-announced
+Slides due 11:59 PM the night before (Nov 12). Slot sign-up opens Oct 13, closes Oct 23 (default Slot C). As of 2026-10-17 the class has not posted the sheet; the user will report when it is open (Slot C is the default if nothing is chosen by Oct 23). Timing may be re-announced
 two weeks before Nov 13 (about Oct 30). Report/code due Dec 11. 6930: >= 3 seeds, >= 2 ablations, 12-20 references.
 Not stated in the guidelines (ask the professor): whether a slot can be changed after sign-up; whether a revised proposal is
 accepted if it was approved.

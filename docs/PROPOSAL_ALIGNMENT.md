@@ -23,7 +23,7 @@ Topic changes after Oct 12 need a documented blocker and an email before the cha
 |---|---|---|---|---|
 | 1 | Question: SVDD-MLP vs best-of-N (N = M), mean SA/QED, validity, scaling in M | prereg | `docs/PREREGISTRATION.md` | aligned |
 | 2 | Primary SVDD, supporting DiGress, DDPO, Gao, TreeDiff | report | `docs/proposal/refs.bib` | aligned |
-| 3 | Train DiGress on QM9 with unmodified repo config, T=500, freeze | Stage 1-2 | submodule `third_party/DiGress` (to add), training job script (to add) | planned |
+| 3 | Train DiGress on QM9 with unmodified repo config, T=500, freeze | Stage 1-2 | submodule `third_party/DiGress` @ bdfa10c (done), `job_scripts/digress_run.sbatch` (written, not yet run) | prepared; training not started (GPU deferred) |
 | 4 | Wrapper returns M i.i.d. children from one pass | Stage 2 | `vgmg/models/digress.py` (stub), `vgmg/models/denoiser.py` interface and NFE counter | interface done, wrapper planned |
 | 5 | Value fn: MLP on atom/bond histograms + timestep embedding | Stage 3 | `models/value_function.py` (embedding done); histogram featurizer inside the wrapper | partly done |
 | 6 | Value fn: 3-layer GNN | Stage 6 (go/no-go Nov 20) | `configs/sweeps/a2_gnn.yaml`; class stub | planned |
@@ -86,3 +86,4 @@ Milestone note: the proposal's weekly rows are split by calendar week; the plan 
 
 ## 6. Status log
 - 2026-10-17: the revised proposal (`Abel_proposal.pdf`) was approved as submitted; no email sent. Slot sign-up deferred (sheet not posted). Stage 1 prep: DiGress is trained with the repo's config files and command-line overrides only (wandb off, seed 0, data path, loader workers, `n_epochs` sized to the 10 GPU-h budget); this stays inside the proposal's risk (i) and budget. Nothing in the proposal text changed.
+- 2026-10-17 (later): the approved proposal's milestone row says "Sign up for Slot A on Oct 13"; the class has not posted the sheet, so this is the one proposal line not met on time (not the professor's doing, no action needed). GPU/GAIVI steps of Stage 1 are deferred by the user, so the proposal row "Oct 12-18: first GPU job, launch DiGress QM9 training" is late; the plan's gates float and risk R17 covers it. If the delay passes ~4 days after access returns, tell the professor.

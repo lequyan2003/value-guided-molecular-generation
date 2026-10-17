@@ -59,5 +59,5 @@ environment is built and verified at gate G1 (see `docs/PLAN.md`; `environment-g
 ## Layout
 
 `vgmg/` package (data, models, rl, eval, utils, tests) - `scripts/` entry points - `configs/` YAML (`sweeps/` = experiment matrix) -
-`job_scripts/` Slurm (GAIVI) - `docs/` plan, pre-registration, proposal, report, `docs/report/` LaTeX (`make compile-proposal`, `make compile-report`).
+`job_scripts/` Slurm (GAIVI), incl. `digress_run.sbatch` - `third_party/DiGress` pinned submodule - `docs/` plan, pre-registration, proposal, report, `docs/report/` LaTeX (`make compile-proposal`, `make compile-report`).
 Provenance of every component is in [CONTRIBUTIONS.md](CONTRIBUTIONS.md).
