@@ -25,6 +25,7 @@ exactness tests, (4) value function, (5) main comparison. Everything else is off
    pre-registered, multi-seed, cost-counted comparison and value-function diagnostics (guidelines Sec. 1.4: new domain, new evaluation).
 4. DiGress's validity keeps the largest fragment; ours requires a connected molecule. Both are reported.
 5. The cluster path is Titan RTX (sm_75, CUDA 11.8 works). The CSAIL 5090 (Blackwell) cannot run torch 2.0.1/cu118, so it is **not** a drop-in fallback.
+6. DiGress's README (2026-09-10) reports a bug: `dim_ffy` is ignored and 2048 is used, so the paper's hyperparameter is not what the code runs and the effect is unknown. We train `main` as is (the published numbers come from this code) and state it in the report; `fixed_bug` stays the R1 fallback.
 
 ## 2. Rubric map
 | Item | Pts | How it is secured | Evidence |
@@ -55,21 +56,23 @@ ranking by timestep); limitations; planned ablations.
 Each stage has tasks, an exit milestone with objective criteria, the evidence artifact, and the action if it fails.
 "Approval" = a GAIVI submission that needs your explicit go-ahead (the standing job limits stays off); agents never commit.
 
-### Stage 0. Oct 9-12 (Fri-Mon): lock the proposal and the plan
+### Stage 0. Oct 9-12 (Fri-Mon): lock the proposal and the plan  **[DONE 2026-10-17]**
+_Closed: the revised proposal (`Abel_proposal.pdf`) was submitted and approved, so no email was needed (item 1); prereg frozen and all docs committed (item 2, last commit `7d41052`); item 3 reading is the user's own and continues with Stage 1 notes; item 4 (Slot A sign-up) is **deferred**: the class has not posted the sheet. Decision (user, 2026-10-17): finish the plan as early as possible and pick the slot when the sheet opens, so gate dates below are targets, not deadlines, until a slot is chosen._
 1. Decide the proposal action (`docs/PROPOSAL_ALIGNMENT.md` has the decision tree and the email text): if feedback said "revise", resubmit the new PDF by Oct 12 11:59 PM; if "approved", email the revised PDF as a documented technical blocker (dead checkpoint) and ask whether a slot can be changed after sign-up.
 2. Freeze `docs/PREREGISTRATION.md` (commit). Commit the new docs.
 3. Read: SVDD Sec. 4 + App. C; DiGress Sec. 4-5 and `sample_p_zs_given_zt`; start `docs/qa_notes.md` (SVDD theory).
 4. Oct 13 (sheet opens): sign up for **Slot A** the same day.
-- **M0 (Mon Oct 12, 11:59 PM):** proposal resubmitted or emailed; prereg frozen; Slot A claimed on Oct 13. _If the professor will not allow the revision:_ keep the approved text and use this plan unchanged (it already treats the dead checkpoint as the baseline path, which is the original proposal's risk (i)); say so in the report.
+- **M0 (Mon Oct 12, 11:59 PM):** proposal resubmitted or emailed; prereg frozen; Slot A claimed on Oct 13. _Result: met except the slot claim (sheet not posted)._ _If the professor will not allow the revision:_ keep the approved text and use this plan unchanged (it already treats the dead checkpoint as the baseline path, which is the original proposal's risk (i)); say so in the report.
 
 ### Stage 1. Oct 12-18: environment, launch DiGress training, timing (gate G1)
-1. `check_connection`, storage report (VPN on). [gaivi-runner]
-2. Pin DiGress as a git submodule at `third_party/DiGress` @ bdfa10c (provenance). Build conda env `vgmg-digress`: Python 3.9, rdkit 2023.03.2, graph-tool 2.45, torch 2.0.1+cu118, torch_geometric 2.3.1, repo requirements, `pip install -e .`, compile orca. Fallback if graph-tool fails: a documented stub module (it is only used by the SBM/planar metrics).
-3. Download QM9 through DiGress's loader on the login node (assume compute nodes have no internet). Run DiGress `+experiment=debug.yaml`, then 3 epochs of `qm9_no_h` to measure s/epoch and VRAM.
-4. **Approval:** launch full DiGress QM9 training on `ClsGenAI`: `qm9_no_h`, `general.wandb=disabled`, `general.gpus=1`, `train.seed=0`, fewer validation samples to cut overhead, resumable checkpoints; jobs <= 8 h chained with `--dependency`; total budget <= 10 GPU-h (limit 20 per task).
-5. Run our repo's `make test` and `make smoke-test` inside the env (checks Python 3.9 compatibility); read the CI result of the 3.9 job.
-6. Measure unguided sampling s/batch-pass with an early checkpoint; re-run `python scripts/estimate_gpu_hours.py <s>`.
-7. Write the env to `environment-gaivi.yml` (exact versions) and the training command to a job script.
+**Prep done locally, no GPU (2026-10-17)** and **blocked on GAIVI access** (the user is fixing the connection in another repo; nothing below that touches GAIVI starts before that). Ownership: agents cannot create environments or run python on the login node (guard rules), so items 2-3 are user-run steps with scripts prepared.
+1. `check_connection`, storage report (VPN on). [gaivi-runner] _Blocked._
+2. DiGress pinned as submodule `third_party/DiGress` @ bdfa10c (**done**). Environment: the **user** runs `bash scripts/setup_digress_env.sh` in a login-node shell (creates `/data/anquyle/conda_envs/vgmg-digress`: Python 3.9, rdkit 2023.03.2, graph-tool 2.45, torch 2.0.1+cu118, torch_geometric 2.3.1 via DiGress's requirements, `pip install -e`). orca is **not** compiled (only SBM/planar metrics use it; QM9 imports neither it nor `spectre_utils`); graph-tool is needed only for DiGress's `import graph_tool` on `main.py` line 1, fallback `PYTHONPATH=scripts/stubs` (empty module, documented). The login node cannot import torch, so the import check runs as a job (`MODE=check` below).
+3. QM9: DiGress's loader cannot run on the login node (it imports torch), and if only the raw files exist it skips `download()` and then fails on the missing split CSVs (checked in the source). So `python scripts/stage_digress_qm9.py` (**done and verified locally**: raw files from the deepchem zip, sha256 pinned, plus `uncharacterized.txt` from figshare which needs a User-Agent header; splits 100000/20497/13388, identical to DiGress's own `np.split(..., random_state=42)` run under pandas 1.4) writes `data/digress_qm9/qm9_pyg/raw`; sync it to GAIVI; `process()` then runs inside the first compute job. The PyG fallback URL in DiGress's loader (`qm9_v3.zip`) holds a processed `.pt`, not raw files, so it is not a substitute.
+4. Job script `job_scripts/digress_run.sbatch` (written, **not submitted**), three modes: `check` (imports, GPU, DiGress `debug` run), `timing` (3 epochs with one validation and a 512-sample generation: s/epoch, VRAM, s per sampling pass) and `train`. **Approval:** launch `train` on `ClsGenAI`: `qm9_no_h`, `wandb=disabled`, `gpus=1`, `seed=0`, `train.n_epochs` = what fits 10 GPU-h from the timing run (the learning rate is constant, so a shorter run is just earlier stopping), resumable. Resume mechanics read from `main.py`: the first job writes `checkpoints/qm9_no_h`, resumed jobs write `checkpoints/qm9_no_h_resume`, the resume path must be absolute, and checkpoints land only at validation epochs (every 5), so a stop loses <= 5 epochs (confirm at timing). Chained jobs: a job that hits its Slurm limit ends TIMEOUT and `afterok` dependents would never start, so the script stops itself at `BUDGET=7h30m` via `timeout` and exits 0 (a `DONE` file marks completion). The 10 GPU-h budget is two jobs at most. The final `trainer.test` generates 10000 samples inside the last job; keep it, it gives DiGress's own metric at no extra cost.
+5. Python 3.9 compatibility **done locally**: conda env with Python 3.9, numpy 1.23.5, pandas 1.4.4, torch 2.0.1 (CPU), rdkit 2023.03.2: 32 tests and `make smoke-test` pass. The GAIVI re-run (inside the real env) remains. There is no GitHub remote, so the CI `compat-digress-env` job has not run; do not claim it.
+6. Measure unguided sampling s/batch-pass with an early checkpoint (the `timing` mode gives a first value); re-run `python scripts/estimate_gpu_hours.py <s>`.
+7. Env freeze: `setup_digress_env.sh` writes `environment-gaivi.yml` and `environment-gaivi.pip.txt`; commit them after review. The training command is the job script.
 - **G1 (Sun Oct 18) passes if:** training is running or done with ETA <= 10 GPU-h; env documented; smoke test passes in it; s/batch-pass measured and the GPU-hour table re-run (total within about 50 GPU-h, or proposal rule (iii) applied).
 - **If it fails:** Oct 19-21 emergency (graph-tool stub, ask GAIVI admins, try the `general` partition); if training has not started by Oct 21, pre-warn the professor about Slot C.
 - **Understanding:** qa_notes "DiGress" section drafted.
@@ -148,7 +151,7 @@ Same stages, same gates, dates shifted: main comparison frozen Nov 20 (G4'), sli
 | ID | Risk | Trigger / date | Response |
 |---|---|---|---|
 | R1 | DiGress training slow or below target validity | ETA > 10 GPU-h at G1; < 97% at G2 | fewer epochs with periodic sampling, `fixed_bug` branch, accept >= 90% and report, parallel ask for a checkpoint |
-| R2 | environment fails (graph-tool, torch 2.0.1/cu118, PyG) | not built by Oct 16 | graph_tool stub, GAIVI admins, `general` partition; 5090 only as a last resort (needs newer torch) |
+| R2 | environment fails (graph-tool, torch 2.0.1/cu118, PyG) | not built or `MODE=check` fails (was Oct 16, floats with G1) | graph_tool stub, GAIVI admins, `general` partition; 5090 only as a last resort (needs newer torch) |
 | R3 | queue delays on `ClsGenAI` | job pending > 24 h | submit early, parallel jobs, resumable runs, `general`/`Quick` with a stated reason |
 | R4 | wrapper bug (masks, extra features, probabilities) | exactness test fails | fix before any experiment; no results from an unverified wrapper |
 | R5 | value fn no better than the constant predictor | G3 diagnostics | check features, S2, more rollouts; PM vs MLP still reportable |
@@ -178,8 +181,8 @@ Rounds 1-2: 1. Compute match ill-posed (children share a pass) -> pass counting,
 ## Gate log
 | Gate | Date | Status | Notes |
 |---|---|---|---|
-| M0 proposal/email, prereg frozen, Slot A signed | Oct 12 | pending | |
-| G1 env + training launched + timing | Oct 18 | pending | |
+| M0 proposal/email, prereg frozen, Slot A signed | Oct 12 | **done 2026-10-17** (slot claim deferred) | revised proposal approved; prereg frozen; sheet not posted yet |
+| G1 env + training launched + timing | Oct 18 (target) | pending | non-GPU prep done 2026-10-17 (see Stage 1); blocked on GAIVI access; date floats until a slot is chosen |
 | G2 DiGress validity + wrapper tests + B1 | Oct 25 | pending | |
 | G3 value fn + fallback run; Slot A go/no-go | Oct 30 | pending | |
 | G4 main comparison frozen | Nov 8 | pending | |

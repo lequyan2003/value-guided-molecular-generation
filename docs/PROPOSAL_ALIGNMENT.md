@@ -83,3 +83,6 @@ Thank you, Abel Le
 | Not "README end to end" / checkpoint swap | training only supplies the frozen base; the contribution is the guidance study (stated in Sec. 3) |
 | File name `lastname_proposal.pdf` | repo name is `Abel_proposal.pdf`; rename on upload to `Le_proposal.pdf` to follow the guidelines literally |
 Milestone note: the proposal's weekly rows are split by calendar week; the plan splits the same work into Stage 3 (Oct 26-30) and Stage 4 (Oct 31-Nov 8) around the Oct 30 gate, with identical content and dates.
+
+## 6. Status log
+- 2026-10-17: the revised proposal (`Abel_proposal.pdf`) was approved as submitted; no email sent. Slot sign-up deferred (sheet not posted). Stage 1 prep: DiGress is trained with the repo's config files and command-line overrides only (wandb off, seed 0, data path, loader workers, `n_epochs` sized to the 10 GPU-h budget); this stays inside the proposal's risk (i) and budget. Nothing in the proposal text changed.
