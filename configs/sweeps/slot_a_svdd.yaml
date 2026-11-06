@@ -1,0 +1,3 @@
+# Slot A, priority 3 (the main result): SVDD-MLP at M = 10, SA reward, seeds 0-2. Trains one value function per seed (cached).
+base: {method: svdd_value, svdd.num_candidates_m: 10, svdd.reward_type: sa}
+sweep: {seed: [0, 1, 2]}

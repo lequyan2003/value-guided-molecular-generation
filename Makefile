@@ -1,4 +1,4 @@
-.PHONY: fallback headline help install test smoke-test splits sweep reference results compile-proposal compile-report clean
+.PHONY: slot-a fallback headline help install test smoke-test splits sweep reference results compile-proposal compile-report clean
 
 help:
 	@echo "Targets: install, test, smoke-test, splits, sweep, reference, results, compile-proposal, compile-report, clean"
@@ -46,4 +46,12 @@ headline:
 	python scripts/run_ablations.py configs/sweeps/b2_best_of_n.yaml
 	python scripts/run_ablations.py configs/sweeps/extra_seeds_svdd.yaml
 	python scripts/run_ablations.py configs/sweeps/extra_seeds_b2.yaml
+	python scripts/generate_results_table.py
+
+# Slot A talk results in priority order (docs/PLAN.md Sec. 4a): B1, B2 (N = M = 10), SVDD-MLP (M = 10, SA), then PM + random control.
+slot-a:
+	python scripts/run_ablations.py configs/sweeps/slot_a_b1.yaml
+	python scripts/run_ablations.py configs/sweeps/slot_a_b2.yaml
+	python scripts/run_ablations.py configs/sweeps/slot_a_svdd.yaml
+	python scripts/run_ablations.py configs/sweeps/slot_a_controls.yaml
 	python scripts/generate_results_table.py

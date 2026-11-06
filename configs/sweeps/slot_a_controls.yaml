@@ -1,0 +1,3 @@
+# Slot A, priority 4 (target, not floor): SVDD-PM and the random-selection control at M = 10, SA reward, seeds 0-2.
+base: {svdd.num_candidates_m: 10, svdd.reward_type: sa}
+sweep: {method: [svdd_pm, random_select], seed: [0, 1, 2]}
