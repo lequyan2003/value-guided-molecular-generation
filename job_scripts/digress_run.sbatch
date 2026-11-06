@@ -27,6 +27,7 @@ BUDGET_S=${BUDGET_S:-27000}                      # 7h30m: stop before the 8 h li
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate "$ENV"
 export PYTHONNOUSERSITE=1
+export PYTHONPATH="$PROJ/third_party/DiGress:$PROJ/scripts/stubs${PYTHONPATH:+:$PYTHONPATH}"
 echo "mode=$MODE job=${SLURM_JOB_ID:-local} host=$(hostname) $(date -Is) commit=$(cat .sync_stamp 2>/dev/null || echo unknown)"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
 python - <<'PY'
