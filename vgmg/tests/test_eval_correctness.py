@@ -65,3 +65,9 @@ def test_seed_streams_independent_and_reproducible() -> None:
     assert draws == {k: torch.randint(10**9, (4,), generator=v).tolist() for k, v in b.items()}
     assert len({tuple(v) for v in draws.values()}) == len(draws)       # all streams differ
     assert torch.randint(10**9, (4,), generator=seed_streams(1)["eval"]).tolist() != draws["eval"]
+
+
+def test_digress_validity_allows_fragments_but_primary_validity_does_not() -> None:
+    m = compute_metrics(["CCO", "CC.O", "garbage", ""], sa_reward)
+    assert m["validity"] == 0.25 and m["validity_digress"] == 0.5       # the fragment counts only under DiGress's rule
+    assert m["reward_mean"] == sa_reward("CCO") / 4                     # reward / verdict use the strict definition

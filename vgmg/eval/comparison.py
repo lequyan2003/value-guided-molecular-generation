@@ -10,7 +10,7 @@ import pandas as pd
 
 from vgmg.eval.stats import mean_std, paired_bootstrap_ci, preregistered_verdict
 
-METRIC_COLS = ["reward_mean", "reward_top10", "validity", "uniqueness", "novelty", "diversity"]
+METRIC_COLS = ["reward_mean", "reward_top10", "validity", "validity_digress", "uniqueness", "novelty", "diversity"]
 
 
 def load_runs(logs_dir: str | Path) -> list[dict]:
@@ -29,7 +29,7 @@ def runs_to_rows(runs: list[dict]) -> pd.DataFrame:
                          "reward": reward, "M": r["M"], "seed": r["seed"], "run_id": r["run_id"], "gpu": r.get("gpu", "unknown"),
                          "nfe_per_molecule": r["nfe_per_molecule"],
                          "wall_s_per_1k": 1000 * r["sample_wall_clock_s"] / r["num_molecules"],
-                         **{c: m[c] for c in METRIC_COLS}})
+                         **{c: m.get(c, float("nan")) for c in METRIC_COLS}})  # records written before a metric existed give nan
     return pd.DataFrame(rows)
 
 

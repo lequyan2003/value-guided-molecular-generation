@@ -47,6 +47,7 @@ import torch.nn.functional as F
 from rdkit import RDLogger
 
 from vgmg.constants import REPO_ROOT
+from vgmg.utils.rdkit_utils import is_sanitizable
 
 DIGRESS_ROOT = REPO_ROOT / "third_party" / "DiGress"
 RDLogger.DisableLog("rdApp.*")  # random / early-training graphs violate valence constantly; failures are counted, not logged
@@ -330,9 +331,7 @@ def digress_validity(smiles: Sequence[str]) -> float:
     This project's primary validity additionally requires one connected fragment
     (``vgmg.eval.metrics.compute_metrics``); both are reported so the numbers can be compared with the DiGress paper.
     """
-    from rdkit import Chem  # noqa: WPS433
-    ok = sum(1 for s in smiles if s and Chem.MolFromSmiles(s) is not None)
-    return ok / max(len(smiles), 1)
+    return sum(is_sanitizable(s) for s in smiles) / max(len(smiles), 1)
 
 
 __all__ = ["DiGressDenoiser", "GraphBatch", "INVALID_SMILES", "digress_validity", "import_digress", "load_digress_checkpoint",

@@ -30,6 +30,15 @@ def mol_from_smiles(smiles: str) -> Chem.Mol | None:
     return mol
 
 
+def is_sanitizable(smiles: str) -> bool:
+    """True if RDKit parses ``smiles`` (fragments allowed): DiGress's validity convention (it keeps the largest fragment).
+
+    ``is_valid`` is the project's primary, stricter definition; this one only exists to report numbers comparable
+    with the DiGress paper next to it.
+    """
+    return bool(smiles) and Chem.MolFromSmiles(smiles) is not None
+
+
 def is_valid(smiles: str) -> bool:
     """True if RDKit can parse and sanitize ``smiles``."""
     return mol_from_smiles(smiles) is not None

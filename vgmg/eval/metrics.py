@@ -6,7 +6,7 @@ from typing import Callable, Collection
 
 import numpy as np
 
-from vgmg.utils.rdkit_utils import canonicalize, is_valid, tanimoto_diversity
+from vgmg.utils.rdkit_utils import canonicalize, is_sanitizable, is_valid, tanimoto_diversity
 
 
 def per_molecule_rewards(smiles: list[str], reward_fn: Callable[[str], float]) -> np.ndarray:
@@ -18,7 +18,8 @@ def compute_metrics(smiles: list[str], reward_fn: Callable[[str], float],
                     reference_smiles: Collection[str] = ()) -> dict[str, float]:
     """Validity, uniqueness, novelty, reward statistics, diversity.
 
-    * ``validity``: parsable AND connected, over all N generated.
+    * ``validity``: parsable AND connected, over all N generated. ``validity_digress``: parsable, fragments allowed
+      (DiGress's largest-fragment convention, for comparison with the DiGress paper; never used in the verdict).
     * ``reward_mean`` (PRIMARY): mean over all N with invalid = 0, so a method cannot raise its
       reward by producing fewer valid molecules. ``reward_top10``: mean of the best 10% of the N.
       ``reward_mean_valid`` is reported as secondary context only.
@@ -35,6 +36,7 @@ def compute_metrics(smiles: list[str], reward_fn: Callable[[str], float],
     return {
         "n": float(len(smiles)),
         "validity": len(valid) / max(len(smiles), 1),
+        "validity_digress": sum(is_sanitizable(s) for s in smiles) / max(len(smiles), 1),
         "uniqueness": len(canon) / max(len(valid), 1),
         "novelty": len(canon - ref) / max(len(canon), 1),
         "reward_mean": float(r_all.mean()) if len(r_all) else 0.0,
