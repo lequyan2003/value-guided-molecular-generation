@@ -75,8 +75,21 @@ def load_digress_checkpoint(mod: Any, checkpoint: str | Path) -> Any:
     ckpt = torch.load(str(checkpoint), map_location="cpu", weights_only=False)
     kwargs = dict(ckpt["hyper_parameters"], train_metrics=None, sampling_metrics=None)
     model = mod.DiscreteDenoisingDiffusion(**kwargs)
-    model.load_state_dict(ckpt["state_dict"])
+    model.load_state_dict(network_state(ckpt["state_dict"]))     # strict: any other mismatch is a real error
     return model
+
+
+METRIC_PREFIXES = ("sampling_metrics.", "train_metrics.", "val_metrics.", "test_metrics.")
+
+
+def network_state(state: dict[str, Any]) -> dict[str, Any]:
+    """The checkpoint's state dict without DiGress's metric objects.
+
+    Lightning checkpoints hold the buffers of the training-time metric modules (for example the target
+    node/edge/valency distributions of ``sampling_metrics``). They are not network weights and the wrapper builds the
+    model without metric objects, so these keys are dropped; every other key must still match exactly.
+    """
+    return {k: v for k, v in state.items() if not k.startswith(METRIC_PREFIXES)}
 
 
 @dataclass

@@ -145,6 +145,25 @@ def test_predict_x0_counts_one_pass_per_graph_and_returns_strings() -> None:
     assert len(out) == 9 and all(isinstance(s, str) for s in out) and den.nfe == 9
 
 
+def test_checkpoint_with_metric_buffers_loads(den, tmp_path) -> None:
+    """A real Lightning checkpoint carries ``sampling_metrics.*`` buffers (found on the first trained checkpoint)."""
+    from vgmg.models.digress import DIGRESS_ROOT, DiGressDenoiser, import_digress, load_digress_checkpoint, network_state
+
+    state = {**den.model.state_dict(), "sampling_metrics.n_target_dist": torch.zeros(3),
+             "sampling_metrics.edge_target_dist": torch.zeros(5)}
+    assert set(state) - set(network_state(state)) == {"sampling_metrics.n_target_dist", "sampling_metrics.edge_target_dist"}
+    hparams = {k: v for k, v in den.model.hparams.items() if k not in ("train_metrics", "sampling_metrics")}
+    path = tmp_path / "fake.ckpt"
+    torch.save({"hyper_parameters": hparams, "state_dict": state}, path)
+    loaded = DiGressDenoiser(path, "cpu")
+    assert all(torch.equal(a, b) for a, b in zip(loaded.model.state_dict().values(), den.model.state_dict().values()))
+    state["model.unrelated.weight"] = torch.zeros(1)                      # a non-metric extra key must still fail loudly
+    torch.save({"hyper_parameters": hparams, "state_dict": state}, path)
+    with pytest.raises(RuntimeError):
+        load_digress_checkpoint(import_digress(), path)
+    assert DIGRESS_ROOT.exists()
+
+
 def test_digress_validity_convention() -> None:
     assert digress_validity(["CCO", "CC.O", "", "C(C)(C)(C)(C)C"]) == 0.5   # fragments allowed; empty / bad valence not
 
