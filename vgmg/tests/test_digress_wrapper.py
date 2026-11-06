@@ -14,6 +14,8 @@ for _mod in ("pytorch_lightning", "torch_geometric", "omegaconf", "wandb", "torc
     pytest.importorskip(_mod)
 
 from vgmg.models.digress import GraphBatch, digress_validity, sample_categorical  # noqa: E402
+from vgmg.models.digress_checks import (  # noqa: E402
+    check_nfe_accounting, check_posterior_exactness, compare_with_official_sampler)
 from vgmg.tests.digress_fixture import build_random_digress, pool_smiles  # noqa: E402
 from vgmg.utils.rdkit_utils import canonicalize  # noqa: E402
 
@@ -65,40 +67,26 @@ def test_propose_groups_children_by_parent(den) -> None:
     assert torch.equal(picked.X, kids.X[1::4]) and len(picked) == 6
 
 
-def test_exactness_a_posterior_equals_digress(den, monkeypatch) -> None:
+def test_exactness_a_posterior_equals_digress(den) -> None:
     """(a) our p(G_{t-1}|G_t) equals the tensors the repository's sample_p_zs_given_zt builds from the same input."""
-    from src.diffusion import diffusion_utils
-    state = den.init(8, gen(3))
-    for t in (den.num_steps, 11, 1):
-        seen = {}
-        real = diffusion_utils.sample_discrete_features
-
-        def spy(probX, probE, node_mask, _real=real, _seen=seen):
-            _seen["X"], _seen["E"] = probX.clone(), probE.clone()    # the repo mutates these in place afterwards
-            return _real(probX, probE, node_mask)
-
-        monkeypatch.setattr(diffusion_utils, "sample_discrete_features", spy)
-        n = den.num_steps
-        ones = torch.ones((len(state), 1))
-        den.model.sample_p_zs_given_zt(ones * (t - 1) / n, ones * t / n, state.X, state.E,
-                                       state.X.new_zeros((len(state), 0)), state.node_mask)
-        monkeypatch.undo()
-        ours_X, ours_E = den.posterior_probs(state, t)
-        assert torch.allclose(ours_X, seen["X"], atol=1e-6) and torch.allclose(ours_E, seen["E"], atol=1e-6)
+    r = check_posterior_exactness(den, n=8, times=[den.num_steps, 11, 1], seed=3)
+    assert r["max_abs_diff_X"] <= 1e-6 and r["max_abs_diff_E"] <= 1e-6, r
 
 
 def test_exactness_c_nfe_equals_network_calls() -> None:
     """(c) ``nfe`` equals the number of graphs the network actually processed, including chunked forward passes."""
-    den = build_random_digress()
-    den.max_forward_batch = 5
-    calls = []
-    den.model.model.register_forward_hook(lambda mod, args, out: calls.append(args[0].shape[0]))
-    s = den.init(7, gen())
-    kids = den.propose(s, 10, 6, gen())            # 7 parents: one pass each, independent of m = 6
-    assert den.nfe == 7
-    den.predict_x0(kids, 9)                        # 42 graphs: one pass each
-    assert den.nfe == 7 + 42 == sum(calls)
-    assert max(calls) <= 5                         # chunking respected
+    r = check_nfe_accounting(build_random_digress(), n=7, m=6, forward_batch=5)
+    assert r["nfe_propose"] == 7                     # one pass per parent, independent of m = 6
+    assert r["nfe_total"] == 7 + 42 == r["network_graphs"]
+    assert r["max_chunk"] <= 5                       # chunking respected
+
+
+def test_official_sampler_comparison_plumbing(den) -> None:
+    """(b) runs end to end and reports sensible numbers (a random-weight model only exercises the plumbing)."""
+    r = compare_with_official_sampler(den, n=24, seed=0, batch_size=16)
+    assert r["n"] == 24 and set(r["gap"]) == {"validity", "uniqueness"}
+    assert r["nfe_per_molecule"] == r["expected_nfe_per_molecule"] == den.num_steps
+    assert 0.0 <= r["wrapper_validity_connected"] <= r["wrapper"]["validity"] + 1e-9
 
 
 def test_children_follow_the_posterior(den) -> None:
