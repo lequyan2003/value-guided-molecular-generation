@@ -5,7 +5,7 @@ are kept aligned line by line in `docs/PROPOSAL_ALIGNMENT.md`. Update the gate l
 
 ## 0. Summary
 
-**Slot status (2026-10-17):** the class has not posted the presentation sign-up sheet. Slot A (Nov 13) stays the assumption for the dates below, but they are targets: the user will say when they sign up. The goal is to finish the plan early, so no step waits for the slot. If the slot ends up later, the gates only move later (Plan C dates, Sec. 8); if earlier or Slot A is unavailable, ask first.
+**Slot status (2026-11-05): Slot A is chosen (talk Fri Nov 13, slides due Thu Nov 12 11:59 PM).** The professor's Slot A bar (email): "a working pipeline, your main result, and one baseline; ablations described rather than shown"; Slot C "needs the complete set". Nothing GPU-side ran between Oct 17 and Nov 5, so the dates of Stages 1-4 below were **re-baselined on 2026-11-05 (Sec. 4a)**. Only dates, gates and the Slot A scope floor changed; every technical item (method, baselines, ablations, metrics, rule, seeds, N) is exactly the proposal's. The original dates are kept in each stage's text for the record and marked "was". The proposal's own risk (v) (ask for Slot C) remains the escape hatch, now triggered at gate D2 (Sec. 4a).
 
 **Objective.** Measure whether SVDD (value-guided decoding) on a frozen DiGress model beats best-of-N on QM9 SA/QED reward at
 matched candidates and at measured cost, and explain the result.
@@ -26,13 +26,13 @@ exactness tests, (4) value function, (5) main comparison. Everything else is off
    TreeDiff compares them on GraphDiT. Our contribution is the **new domain** (discrete graph diffusion, DiGress/QM9) plus a
    pre-registered, multi-seed, cost-counted comparison and value-function diagnostics (guidelines Sec. 1.4: new domain, new evaluation).
 4. DiGress's validity keeps the largest fragment; ours requires a connected molecule. Both are reported.
-5. The cluster path is Titan RTX (sm_75, CUDA 11.8 works). The CSAIL 5090 (Blackwell) cannot run torch 2.0.1/cu118, so it is **not** a drop-in fallback.
+5. The cluster path is Titan RTX (sm_75, CUDA 11.8 works). The CSAIL 5090 (Blackwell, sm_120) cannot run torch 2.0.1/cu118, so it is **not** a drop-in fallback. The CSAIL 4090 (Ada, sm_89) **should** run it (CUDA 11.8 supports sm_89; not yet tested: confirm with the arch-list check, 2026-11-05) and is free without a queue, which is why Sec. 4a recommends it as the primary training machine for the compressed Slot A schedule. The `vgmg` (Python 3.12, torch >= 2.5) envs built on 2026-11-05 are for our own package only; DiGress needs its pinned stack.
 6. DiGress's README (2026-09-10) reports a bug: `dim_ffy` is ignored and 2048 is used, so the paper's hyperparameter is not what the code runs and the effect is unknown. We train `main` as is (the published numbers come from this code) and state it in the report; `fixed_bug` stays the R1 fallback.
 
 ## 2. Rubric map
 | Item | Pts | How it is secured | Evidence |
 |---|---|---|---|
-| Live Q&A | 30 | `docs/qa_notes.md` complete by Nov 10; code walk-through drill Nov 12 | notes, rehearsal log |
+| Live Q&A | 30 | `docs/qa_notes.md` complete by Tue Nov 10 (sections due Sat/Sun/Mon/Tue, Sec. 7); code walk-through drill Thu Nov 12 | notes, rehearsal log |
 | Exposition | 15 | derive soft value + explain why M children share a pass | slides |
 | Results/evidence | 12 | seeds, std, CI, cost axes, pre-registered rule, labeled preliminary | `results/tables/` |
 | Delivery | 8 | 10 min, two timed rehearsals, engage in others' talks | rehearsal log |
@@ -54,7 +54,24 @@ The talk has about 8 slides: problem and gap; SVDD mechanism (soft value, import
 share a pass; setup (baselines, cost accounting, metrics, seeds); main table (mean ± std over 3 seeds); why it works or not (value-function
 ranking by timestep); limitations; planned ablations.
 
+## 4a. Re-baselined schedule to Slot A (2026-11-05; supersedes the dates in Stages 1-5 and in the gate log)
+Today is Thu Nov 5 (night); the talk is Fri Nov 13; slides are due Thu Nov 12 11:59 PM (upload Wed Nov 11 night).
+| Day | Work (the stage numbers are the stages below) | Gate |
+|---|---|---|
+| Thu Nov 5 | choose the DiGress training machine; start the DiGress env (`vgmg-digress`, Python 3.9, torch 2.0.1/cu118; **CSAIL 4090 recommended** (sm_89 runs cu118; confirm with the arch-list check), GAIVI `ClsGenAI` as insurance; the 5090 cannot run it); recreate the local test env | env build started |
+| Fri Nov 6 | `MODE=check`, `MODE=timing`, **launch `MODE=train` by 18:00**; wrapper v1 (`init/propose/take/decode`) + histogram featurizer; optional office-hours check-in (ask: slot change allowed? feedback) | **D1 Fri 18:00: training running.** If not: tell the professor Sat morning (R17) |
+| Sat Nov 7 | `predict_x0`, `encode`; exactness tests (a)-(c) on early checkpoints; demo skeleton on the toy | wrapper tests green on an early checkpoint |
+| Sun Nov 8 | **freeze DiGress at 12:00** whatever validity is reached (<= 10 GPU-h total); DiGress-metric validity; B1 seeds 0-2; B2 pool; SA rollouts start | **D2 Sun 12:00 (replaces G2/G3 go/no-go):** tests (a)-(c) pass and validity >= 90 % (target >= 97 %). Else NO-GO: ask for Slot C and keep the same order of work (Sec. 8) |
+| Mon Nov 9 | SA value function, S2 t=0 check, S3; SVDD-MLP at M=10 seeds 0-2 (SA); SVDD-PM; random-selection control; QED rollouts | S2 Spearman >= 0.5 (an alarm, not a result) |
+| Tue Nov 10 | QED runs; H1 `sibling_ranking` on seed 0; `make results`; **freeze 18:00**, tag `talk-snapshot`; demo cache from the snapshot | **D3 Tue 18:00 (replaces G4, was Nov 8): results frozen** |
+| Wed Nov 11 | slides from `talk-snapshot`; two timed rehearsals; Q&A drill; **slides uploaded Wed night** | G5a |
+| Thu Nov 12 | code walk-through drill; demo dry run (live / replay / toy); no new experiments | |
+| Fri Nov 13 | present (Slot A) | G5 |
+**Slot A scope tiers under this schedule (all inside the proposal):** floor = the proposal's single-GPU fallback scale (N = 1000, B1 + B2 + SVDD-MLP at M = 10, SA, seed 0); target = T1 of Sec. 3 (N = 2000, seeds 0-2, SA, B1, B2, SVDD-MLP, SVDD-PM, random control; the verdict is computed only with >= 3 paired seeds and labeled preliminary); stretch = QED, H1 sibling ranking, partial A1. If the measured s/batch-pass is > 3x the proposal's 0.1 s, apply proposal rule (iii) in this order: seeds 1-2 come after the talk, N to 1000, M grid later.
+**Unchanged after the talk:** Nov 14-22 A1/A2/seeds 3-4, Nov 20 GNN go/no-go, Nov 29 results frozen, Dec 10-11 report. **Demo (not in the proposal, no scientific content):** `scripts/demo.py`, three views (denoising movie, one SVDD step with scores, 16-molecule head-to-head B1/B2/SVDD) in modes live / replay / toy; built Sat-Tue from the same code path as the experiments; replay mode is the default on stage.
+
 ## 4. Chronological execution plan
+(Dates in the stage headings below are the **original** dates ("was"); the live dates are in Sec. 4a.)
 Each stage has tasks, an exit milestone with objective criteria, the evidence artifact, and the action if it fails.
 "Approval" = a GAIVI submission that needs your explicit go-ahead (the standing job limits stays off); agents never commit.
 
@@ -133,21 +150,21 @@ Training and wrapper overlap in Stage 2: the wrapper is developed against interm
 
 ## 6. Compute (proposal formula, measured s/pass at G1)
 `python scripts/estimate_gpu_hours.py <s>`: at the proposal's 0.1 s and 1.5x: 30.7 GPU-h (38 with margin) plus DiGress training <= 10 = about 48, under the proposal's 50.
-Slot A needs only about 15 GPU-h before Nov 8 (B1 0.2, SVDD-MLP at M=10 incl. value functions 6.2, B2 pool of 10 about 2.4, PM 5.4, random control 0.5), runnable as 2-3 parallel 1-GPU jobs.
+Slot A needs only about 15 GPU-h of experiments (B1 0.2, SVDD-MLP at M=10 incl. value functions 6.2, B2 pool of 10 about 2.4, PM 5.4, random control 0.5) between Sun Nov 8 12:00 and Tue Nov 10 18:00 (about 54 h of wall-clock), runnable as 2 parallel 1-GPU jobs (4090 + GAIVI), plus DiGress training <= 10 GPU-h before the freeze. These are the proposal's own estimates (0.1 s per batch-pass assumed): re-run `estimate_gpu_hours.py` with the s/pass from `MODE=timing` on Fri Nov 6; if the total no longer fits, apply the Sec. 4a scope tiers (floor = the proposal's fallback scale).
 Limits (the standing job limits): <= 8 h per job, <= 20 GPU-h per task, <= 12 queued jobs; log every job in the GPU job ledger.
 Shrink order: seeds 3-4, then N=1000 and M in {1,10,20} (proposal rule iii).
 
 ## 7. Understanding plan (qa_notes sections and due dates)
 | Section | Due |
 |---|---|
-| SVDD theory (soft value, tilted kernel, importance resampling, argmax limit, MC vs soft value) | Oct 25 |
-| DiGress (forward process, denoiser outputs, posterior sampling, why one pass serves M children, loss, noise schedule) | Oct 25 |
-| Experimental design (baselines, pass counting, seeds, rule, leakage controls, splits) | Oct 30 |
-| Counterfactuals and limits | Nov 10 |
-| Code walk-through of every file | Nov 12 |
+| SVDD theory (soft value, tilted kernel, importance resampling, argmax limit, MC vs soft value) | Sun Nov 8 (was Oct 25) |
+| DiGress (forward process, denoiser outputs, posterior sampling, why one pass serves M children, loss, noise schedule) | Sat Nov 7 (was Oct 25) |
+| Experimental design (baselines, pass counting, seeds, rule, leakage controls, splits) | Mon Nov 9 (was Oct 30) |
+| Counterfactuals and limits | Tue Nov 10 |
+| Code walk-through of every file | Thu Nov 12 |
 
-## 8. Plan C (if G3 fails on Oct 30): Slot C, Fri Dec 4
-Same stages, same gates, dates shifted: main comparison frozen Nov 20 (G4'), slides Dec 3, talk Dec 4, T2 frozen Nov 29 as before, report Dec 10. Nothing in the proposal changes except the slot.
+## 8. Plan C (if D2 fails on Sun Nov 8; was: G3 on Oct 30): Slot C, Fri Dec 4
+Same stages, same gates, dates shifted: main comparison frozen Nov 20 (G4'), slides Dec 3, talk Dec 4, T2 frozen Nov 29 as before, report Dec 10. Nothing in the proposal changes except the slot. Whether a slot can be changed after sign-up is **unknown** (ask at the Nov 6 check-in or by email on Fri Nov 6); if it is not allowed, D2 becomes "present what exists, labeled preliminary, with the pipeline and B1 only" instead of a move.
 
 ## 9. Risk register
 | ID | Risk | Trigger / date | Response |
@@ -161,7 +178,10 @@ Same stages, same gates, dates shifted: main comparison frozen Nov 20 (G4'), sli
 | R7 | reward hacking / collapse to tiny molecules | reward above real QM9 top-10% or diversity collapse | inspect samples; report diversity and novelty next to reward |
 | R8 | PM ties at early steps (x̂0 invalid -> reward 0) | PM about equals random selection | random tie-break; report tie fraction |
 | R9 | evaluation bug or leakage | any time; final audit Dec 7 | tests, single `compute_metrics`, separate RNG streams, audit checklist |
-| R10 | Slot A time pressure (slot not yet chosen, see Sec. 0) | G3, G4 | NO-GO to Plan C; present preliminary results labeled |
+| R10 | Slot A time pressure (8 days from 2026-11-05) | D1 Fri 18:00, D2 Sun 12:00, D3 Tue 18:00 (Sec. 4a) | NO-GO at D2 to Plan C; otherwise present what is frozen at D3, labeled preliminary; never extend the freeze |
+| R18 | DiGress env on the 4090 fails (torch 2.0.1/cu118 on sm_89, graph-tool, PyG 2.3.1) | `MODE=check` fails Fri | graph_tool stub, GAIVI env as the second path; the `vgmg` (Python 3.12) analysis env is **not** a substitute: DiGress needs the pinned stack |
+| R19 | wrapper bug under time pressure | exactness test (a), (b) or (c) fails Sat/Sun | no result from an unverified wrapper (R4); if unfixed at D2, NO-GO |
+| R20 | demo fails on stage | any | replay mode from `talk-snapshot`; toy mode labeled "pipeline only"; a failed demo is not penalized if explained (guidelines 4.1) |
 | R11 | ~~proposal revision not accepted~~ **closed 2026-10-17** (revised proposal approved) | n/a | none |
 | R17 | GAIVI access not restored, so no GPU step can start (G1 open) | access still broken when the user returns | user fixes it first; every day of delay moves G1-G3, so tell the professor early if training has not started within ~4 days of access (Slot C is the escape hatch); the CSAIL 5090 cannot run torch 2.0.1/cu118 |
 | R12 | provenance holes (dirty commit, mixed GPUs) | `make results` warnings | run from a clean commit; compare wall-clock only on one GPU type |
@@ -185,11 +205,11 @@ Rounds 1-2: 1. Compute match ill-posed (children share a pass) -> pass counting,
 | Gate | Date | Status | Notes |
 |---|---|---|---|
 | M0 proposal/email, prereg frozen, Slot A signed | Oct 12 | **done 2026-10-17** (slot claim deferred) | revised proposal approved; prereg frozen; sheet not posted yet |
-| G1 env + training launched + timing | Oct 18 (target) | pending | non-GPU prep done 2026-10-17 (see Stage 1); blocked on GAIVI access; date floats until a slot is chosen |
-| G2 DiGress validity + wrapper tests + B1 | Oct 25 | pending | |
-| G3 value fn + fallback run; Slot A go/no-go | Oct 30 | pending | |
-| G4 main comparison frozen | Nov 8 | pending | |
-| G5 talk | Nov 13 | pending | |
+| G1 env + training launched + timing | was Oct 18; **now D1 Fri Nov 6 18:00** | pending | non-GPU prep done 2026-10-17; re-baselined 2026-11-05 (Sec. 4a); `vgmg` analysis envs built Nov 5 but DiGress env not yet |
+| G2 DiGress validity + wrapper tests + B1 | was Oct 25; **now D2 Sun Nov 8 12:00 (also the Slot A go/no-go)** | pending | merged with G3's go/no-go: the Oct 30 gate date was missed, so its decision moves to D2 |
+| G3 value fn + fallback run | was Oct 30; **now Mon Nov 9** | pending | the go/no-go function moved to D2 |
+| G4 main comparison frozen | was Nov 8; **now D3 Tue Nov 10 18:00** | pending | |
+| G5 talk | Nov 13 (unchanged) | pending | slides uploaded Wed Nov 11 night |
 | G6 all promised runs | Nov 22 | pending | |
 | G7 results frozen | Nov 29 | pending | |
 | G8 submission | Dec 10 | pending | |

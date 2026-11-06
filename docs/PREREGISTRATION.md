@@ -97,4 +97,11 @@ DDPO-style fine-tuning (needs training; the point of SVDD is to avoid it); DiGre
 guidance (needs a retrained property regressor; different question).
 
 ## Amendments
-(none yet)
+**2026-11-05 (schedule only, before any real run exists; no change to the question, rule, seeds, N, metrics or comparisons).**
+1. Dates re-baselined to the Slot A talk (Nov 13): DiGress frozen Sun Nov 8 12:00, results frozen Tue Nov 10 18:00 (was Nov 8), slides uploaded Nov 11
+   (`docs/PLAN.md` Sec. 4a). The "Slot A reporting" paragraph above still holds: only seeds 0-2 can exist at the talk, the verdict is labeled preliminary.
+2. If time forces a smaller Slot A scope, the order of cuts is fixed now: seeds 1-2 and QED come after the talk, then N = 1000 (the proposal's own
+   single-GPU fallback scale). The verdict is computed only with >= 3 paired seeds (already enforced in `eval/comparison.py::headline_verdict`);
+   with fewer, the talk reports means with their std and says "no verdict yet". The decision rule itself is untouched.
+3. The frozen DiGress is whatever the training run has reached at the freeze time (proposal risk (i): >= 97 % target, < 90 % freeze and report);
+   its DiGress-metric validity is reported next to every result.
