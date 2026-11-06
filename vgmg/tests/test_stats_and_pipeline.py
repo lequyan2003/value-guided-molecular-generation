@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+
 import numpy as np
 
 from vgmg.config import load_config
@@ -137,3 +139,15 @@ def test_value_function_record_carries_t0_and_sibling_diagnostics(tmp_path) -> N
     off = run_experiment(_cfg(tmp_path / "off", method="svdd_value",
                               **{"value_fn.diag_t0_molecules": 0, "value_fn.diag_sibling_parents": 0}))
     assert "t0_check" not in off["value_fn"] and "sibling" not in off["value_fn"] and off["value_fn"]["diag_nfe"] == 0
+
+
+def test_checkpoint_identity_is_hashed_and_recorded(tmp_path) -> None:
+    from vgmg.experiments import model_identity
+    ck = tmp_path / "m.ckpt"
+    ck.write_bytes(b"weights-v1")
+    cfg = {"model": {"name": "digress", "digress_checkpoint": str(ck)}}
+    a = model_identity(cfg)
+    assert a["checkpoint_sha256"] == hashlib.sha256(b"weights-v1").hexdigest()
+    assert model_identity({"model": {"name": "toy"}}) == {"name": "toy"}
+    s = run_experiment(_cfg(tmp_path / "r", method="unguided"))
+    assert s["model_identity"] == {"name": "toy"}

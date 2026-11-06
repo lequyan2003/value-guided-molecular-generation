@@ -8,6 +8,7 @@ logging code. A run is identified by a deterministic ``run_id`` and is skipped i
 from __future__ import annotations
 
 import csv
+import functools
 import hashlib
 import json
 import time
@@ -43,6 +44,28 @@ def build_denoiser(cfg: dict[str, Any]) -> Denoiser:
         from vgmg.models.digress import DiGressDenoiser
         return DiGressDenoiser(cfg["model"]["digress_checkpoint"], cfg.get("device", "cuda"))
     raise KeyError(f"Unknown model {name!r}")
+
+
+@functools.lru_cache(maxsize=8)
+def _sha256(path: str) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def model_identity(cfg: dict[str, Any]) -> dict[str, Any]:
+    """Which generator produced a run: its name and, for DiGress, the checkpoint path and SHA-256 of its bytes.
+
+    Written into every run record and into the value-function cache key, so retraining DiGress under the same
+    file name can neither be mistaken for the old model nor silently reuse a value function fitted to it.
+    """
+    m = cfg["model"]
+    if m["name"] != "digress":
+        return {"name": m["name"]}
+    path = m["digress_checkpoint"]
+    return {"name": "digress", "checkpoint": str(path), "checkpoint_sha256": _sha256(str(path))}
 
 
 def reference_smiles(cfg: dict[str, Any]) -> list[str]:
@@ -126,7 +149,7 @@ def get_value_function(cfg: dict[str, Any], denoiser: Denoiser, log: RunLogger |
     """
     s, vf = cfg["svdd"], cfg["value_fn"]
     # the hash makes a changed value_fn config or checkpoint miss the cache instead of silently reusing a stale model
-    h = hashlib.sha1(json.dumps([vf, cfg["model"]], sort_keys=True, default=str).encode()).hexdigest()[:8]
+    h = hashlib.sha1(json.dumps([vf, cfg["model"], model_identity(cfg)], sort_keys=True, default=str).encode()).hexdigest()[:8]
     tag = f"{cfg['model']['name']}_{s['reward_type']}_{s['value_fn_arch']}_s{cfg['seed']}_{h}"
     ckpt, diag_path = value_fn_dir(cfg) / f"{tag}.pt", value_fn_dir(cfg) / f"{tag}.json"
     model = build_value_function(s["value_fn_arch"], denoiser.feature_dim, vf["hidden_dim"], vf["num_hidden"])
@@ -216,7 +239,7 @@ def _write_record(cfg: dict[str, Any], run_id: str, method: str, reward: str | N
         "run_id": run_id, "method": method, "seed": cfg["seed"], "model": cfg["model"]["name"],
         "M": M, "reward": reward, "selection": cfg["svdd"]["selection"], "num_molecules": n,
         "nfe_total": nfe_total, "nfe_per_molecule": nfe_total / n, "sample_wall_clock_s": round(wall, 3),
-        "gpu": _gpu_name(), "git_commit": get_git_commit(), "value_fn": diag, "metrics": metrics, **(extra or {}),
+        "model_identity": model_identity(cfg), "gpu": _gpu_name(), "git_commit": get_git_commit(), "value_fn": diag, "metrics": metrics, **(extra or {}),
     }
     summary = json.loads(json.dumps(summary, default=float))  # same types as a reloaded record
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
