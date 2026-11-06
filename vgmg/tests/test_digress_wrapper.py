@@ -1,0 +1,180 @@
+"""DiGress wrapper: shapes and masks, exactness test (a) and (c) of docs/PLAN.md, sampling distribution, determinism.
+
+Runs on a small random-weight DiGress (``digress_fixture``), so it checks mechanics, not generative quality. Skipped
+when the DiGress dependencies are not installed (the plain CPU CI job). Test (b) (validity and uniqueness against the
+official sampler on a trained model) is ``scripts/verify_digress_wrapper.py``.
+"""
+
+from __future__ import annotations
+
+import pytest
+import torch
+
+for _mod in ("pytorch_lightning", "torch_geometric", "omegaconf", "wandb", "torchmetrics"):
+    pytest.importorskip(_mod)
+
+from vgmg.models.digress import GraphBatch, digress_validity, sample_categorical  # noqa: E402
+from vgmg.tests.digress_fixture import build_random_digress, pool_smiles  # noqa: E402
+from vgmg.utils.rdkit_utils import canonicalize  # noqa: E402
+
+pytestmark = pytest.mark.digress
+
+
+@pytest.fixture(scope="module")
+def den():
+    return build_random_digress()
+
+
+def gen(seed: int = 0) -> torch.Generator:
+    return torch.Generator().manual_seed(seed)
+
+
+def assert_well_formed(state: GraphBatch, den) -> None:
+    """One-hot, masked exactly like DiGress's PlaceHolder.mask, symmetric, diagonal = class 0 on real nodes."""
+    m = state.node_mask
+    assert torch.equal(state.X.sum(-1), m.float())                      # one-hot on real nodes, zero on padding
+    pair = m.unsqueeze(1) & m.unsqueeze(2)
+    assert torch.equal(state.E.sum(-1), pair.float())
+    assert torch.equal(state.E, state.E.transpose(1, 2))
+    diag = state.E.diagonal(dim1=1, dim2=2)                             # (B, de, n)
+    assert (diag[:, 0, :][m] == 1).all()                                # no self-bonds
+
+
+def test_sample_categorical_inverse_cdf() -> None:
+    probs = torch.tensor([0.2, 0.0, 0.5, 0.3])
+    u = torch.tensor([0.0, 0.19, 0.2, 0.69, 0.7, 0.999])
+    assert sample_categorical(probs, u).tolist() == [0, 0, 2, 2, 3, 3]   # class 1 has probability 0 and is never drawn
+
+
+def test_init_shapes_and_masks(den) -> None:
+    s = den.init(64, gen())
+    assert (s.X.shape, s.E.shape) == ((64, 9, 4), (64, 9, 9, 5))
+    assert_well_formed(s, den)
+    sizes = s.node_mask.sum(1)
+    assert sizes.min() >= 1 and sizes.max() <= 9
+    assert (sizes == 9).float().mean() > 0.6                            # QM9 no-H: 83 % of graphs have 9 atoms
+
+
+def test_propose_groups_children_by_parent(den) -> None:
+    parents = den.init(6, gen())
+    kids = den.propose(parents, den.num_steps, 4, gen(1))
+    assert len(kids) == 24
+    assert_well_formed(kids, den)
+    assert torch.equal(kids.node_mask, parents.node_mask.repeat_interleave(4, dim=0))   # row i*m+j is child j of parent i
+    picked = den.take(kids, torch.arange(6) * 4 + 1)
+    assert torch.equal(picked.X, kids.X[1::4]) and len(picked) == 6
+
+
+def test_exactness_a_posterior_equals_digress(den, monkeypatch) -> None:
+    """(a) our p(G_{t-1}|G_t) equals the tensors the repository's sample_p_zs_given_zt builds from the same input."""
+    from src.diffusion import diffusion_utils
+    state = den.init(8, gen(3))
+    for t in (den.num_steps, 11, 1):
+        seen = {}
+        real = diffusion_utils.sample_discrete_features
+
+        def spy(probX, probE, node_mask, _real=real, _seen=seen):
+            _seen["X"], _seen["E"] = probX.clone(), probE.clone()    # the repo mutates these in place afterwards
+            return _real(probX, probE, node_mask)
+
+        monkeypatch.setattr(diffusion_utils, "sample_discrete_features", spy)
+        n = den.num_steps
+        ones = torch.ones((len(state), 1))
+        den.model.sample_p_zs_given_zt(ones * (t - 1) / n, ones * t / n, state.X, state.E,
+                                       state.X.new_zeros((len(state), 0)), state.node_mask)
+        monkeypatch.undo()
+        ours_X, ours_E = den.posterior_probs(state, t)
+        assert torch.allclose(ours_X, seen["X"], atol=1e-6) and torch.allclose(ours_E, seen["E"], atol=1e-6)
+
+
+def test_exactness_c_nfe_equals_network_calls() -> None:
+    """(c) ``nfe`` equals the number of graphs the network actually processed, including chunked forward passes."""
+    den = build_random_digress()
+    den.max_forward_batch = 5
+    calls = []
+    den.model.model.register_forward_hook(lambda mod, args, out: calls.append(args[0].shape[0]))
+    s = den.init(7, gen())
+    kids = den.propose(s, 10, 6, gen())            # 7 parents: one pass each, independent of m = 6
+    assert den.nfe == 7
+    den.predict_x0(kids, 9)                        # 42 graphs: one pass each
+    assert den.nfe == 7 + 42 == sum(calls)
+    assert max(calls) <= 5                         # chunking respected
+
+
+def test_children_follow_the_posterior(den) -> None:
+    """Empirical child frequencies of one parent match the probabilities (the inverse-CDF sampler is unbiased)."""
+    parent = den.init(1, gen(5))
+    t, m = 12, 20000
+    prob_X, prob_E = den.posterior_probs(parent, t)
+    kids = den.propose(parent, t, m, gen(6))
+    n = int(parent.node_mask.sum())
+    freq_X = kids.X[:, :n].mean(0)                                       # (n, dx)
+    assert (freq_X - prob_X[0, :n]).abs().max() < 0.02                   # 5 sigma at m = 20000
+    freq_E = kids.E[:, :n, :n].mean(0)
+    off = ~torch.eye(n, dtype=torch.bool)
+    assert (freq_E[off] - prob_E[0, :n, :n][off]).abs().max() < 0.02
+
+
+def test_determinism_and_generator_independence(den) -> None:
+    a = den.propose(den.init(5, gen(1)), 7, 3, gen(2))
+    b = den.propose(den.init(5, gen(1)), 7, 3, gen(2))
+    c = den.propose(den.init(5, gen(1)), 7, 3, gen(3))
+    assert torch.equal(a.X, b.X) and torch.equal(a.E, b.E)
+    assert not torch.equal(a.E, c.E)
+    torch.manual_seed(0)                                                  # the global RNG must not matter
+    d = den.propose(den.init(5, gen(1)), 7, 3, gen(2))
+    assert torch.equal(a.E, d.E)
+
+
+def test_features_are_normalised_histograms(den) -> None:
+    f = den.features(den.encode(["CC=O", "C1CC1", "C#N"]))
+    assert f.shape == (3, den.feature_dim) == (3, 9)
+    # C C=O -> atoms C2 N0 O1 F0 | single 1 double 1 triple 0 aromatic 0 | n = 3, all divided by 9
+    assert torch.allclose(f[0], torch.tensor([2, 0, 1, 0, 1, 1, 0, 0, 3]) / 9)
+    assert torch.allclose(f[1], torch.tensor([3, 0, 0, 0, 3, 0, 0, 0, 3]) / 9)
+    assert torch.allclose(f[2], torch.tensor([1, 1, 0, 0, 0, 0, 1, 0, 2]) / 9)
+
+
+def test_encode_decode_round_trip(den) -> None:
+    smiles, nfe0 = pool_smiles(), den.nfe
+    back = den.decode(den.encode(smiles))
+    # an aromatic N-H cannot be written without explicit hydrogens (DiGress's QM9 convention): the only allowed failures
+    bad = [a for a, b in zip(smiles, back) if canonicalize(a) != canonicalize(b)]
+    assert all("[nH]" in canonicalize(a) for a in bad), bad
+    assert len(bad) < len(smiles) // 10
+    assert den.nfe == nfe0                                                # encode/decode never touch the network
+
+
+def test_encode_rejects_unsupported_molecules(den) -> None:
+    for smi in ("CCCCCCCCCC", "CCl", "not-a-smiles"):
+        with pytest.raises(ValueError):
+            den.encode([smi])
+
+
+def test_predict_x0_counts_one_pass_per_graph_and_returns_strings() -> None:
+    den = build_random_digress()
+    out = den.predict_x0(den.init(9, gen()), 5)
+    assert len(out) == 9 and all(isinstance(s, str) for s in out) and den.nfe == 9
+
+
+def test_digress_validity_convention() -> None:
+    assert digress_validity(["CCO", "CC.O", "", "C(C)(C)(C)(C)C"]) == 0.5   # fragments allowed; empty / bad valence not
+
+
+def test_svdd_runs_through_the_wrapper() -> None:
+    """The unchanged samplers drive the wrapper: M = 1, a value-function scorer, and the PM scorer."""
+    from vgmg.models.value_function import MLPValueFunction
+    from vgmg.rl.rewards import get_reward
+    from vgmg.rl.svdd import pm_scorer, svdd_sample, value_scorer
+
+    den = build_random_digress()
+    T = den.num_steps
+    out = svdd_sample(den, None, 4, 1, gen())
+    assert len(out) == 4 and den.nfe == 4 * T
+    den.nfe = 0
+    vf = MLPValueFunction(den.feature_dim)
+    out = svdd_sample(den, value_scorer(vf), 4, 3, gen())
+    assert len(out) == 4 and den.nfe == 4 * T                              # SVDD-MLP: T passes per molecule for any M
+    den.nfe = 0
+    out = svdd_sample(den, pm_scorer(get_reward("sa")), 4, 3, gen())
+    assert len(out) == 4 and den.nfe == 4 * (3 + 1) * T                    # SVDD-PM: (M+1)*T passes per molecule
