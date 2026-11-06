@@ -19,6 +19,7 @@ The **smoke test uses `ToyDenoiser`, a stand-in that is not a generative model**
 pipeline runs and is reproducible. They are not research results.
 
 Project plan, gates and rubric mapping: [docs/PLAN.md](docs/PLAN.md).
+Problems met along the way and their fixes (for the report and Q&A): [docs/PROBLEMS_AND_FIXES.md](docs/PROBLEMS_AND_FIXES.md).
 
 ## Install
 
