@@ -53,5 +53,6 @@ slot-a:
 	python scripts/run_ablations.py configs/sweeps/slot_a_b1.yaml
 	python scripts/run_ablations.py configs/sweeps/slot_a_b2.yaml
 	python scripts/run_ablations.py configs/sweeps/slot_a_svdd.yaml
+	python scripts/run_ablations.py configs/sweeps/slot_a_svdd_softmax.yaml
 	python scripts/run_ablations.py configs/sweeps/slot_a_controls.yaml
 	python scripts/generate_results_table.py

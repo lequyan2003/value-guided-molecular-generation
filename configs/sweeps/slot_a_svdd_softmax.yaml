@@ -1,0 +1,7 @@
+# Slot A, priority 5 (exploratory H2 arm, not the pre-registered primary): SVDD-MLP with softmax selection at M = 10, SA reward.
+# Why: in pilots on an early DiGress checkpoint, argmax drove chains into states the value function never saw (about 14 aromatic
+# bonds on 9 atoms) and validity collapsed. Children's values differ by only ~0.01-0.05, so the temperature must be on that
+# scale: alpha = 1.0 (configs/sweeps/h2_selection.yaml) is effectively random selection. The value function is shared with
+# slot_a_svdd.yaml (the cache key does not include the selection rule).
+base: {method: svdd_value, svdd.num_candidates_m: 10, svdd.reward_type: sa, svdd.selection: softmax}
+sweep: {svdd.alpha: [0.1, 0.03, 0.01], seed: [0, 1, 2]}
