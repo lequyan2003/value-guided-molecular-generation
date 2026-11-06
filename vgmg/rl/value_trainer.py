@@ -40,27 +40,31 @@ def collect_rollouts(denoiser: Denoiser, reward_fn: RewardFn, n: int, generator:
                      ts_per_chain: int = 20, chain_offset: int = 0) -> RolloutData:
     """Roll out ``n`` unguided chains and keep ``ts_per_chain`` random timesteps of each.
 
-    Subsampling timesteps keeps memory at n·ts_per_chain rows instead of n·T. The time subset
-    is drawn once per call and shared by all chains in it (the features at those times are
-    recorded for the state *before* the step from t, i.e. the state x_t).
+    Subsampling timesteps keeps memory at n·ts_per_chain rows instead of n·T. Every chain draws its OWN set of
+    distinct timesteps from {1..T} (independent across chains), so the value function sees all noise levels and
+    not a handful shared by every row; the features recorded at t are those of the state x_t, i.e. *before* the
+    step from t.
     """
     T = denoiser.num_steps
     k = min(ts_per_chain, T)
-    times = set(torch.randperm(T, generator=generator)[:k].add(1).tolist())  # subset of {1..T}
+    chosen = torch.rand(n, T, generator=generator).argsort(dim=1)[:, :k] + 1          # (n, k) distinct times per chain
+    keep = torch.zeros(n, T + 1, dtype=torch.bool)
+    keep.scatter_(1, chosen, True)
     state = denoiser.init(n, generator)
     feats: list[torch.Tensor] = []
     tfs: list[torch.Tensor] = []
+    rows: list[torch.Tensor] = []
     for t in range(T, 0, -1):
-        if t in times:
-            feats.append(denoiser.features(state))
-            tfs.append(torch.full((n,), t / T))
+        sel = keep[:, t].nonzero().squeeze(1)
+        if len(sel):
+            feats.append(denoiser.features(state)[sel])
+            tfs.append(torch.full((len(sel),), t / T))
+            rows.append(sel)
         state = denoiser.propose(state, t, 1, generator)
     final = torch.tensor([reward_fn(s) for s in denoiser.decode(state)], dtype=torch.float32)
-    chain = torch.arange(n) + chain_offset
-    return RolloutData(
-        features=torch.cat(feats), t_frac=torch.cat(tfs),
-        targets=final.repeat(len(feats)), chain=chain.repeat(len(feats)),
-    )
+    chain = torch.cat(rows)
+    return RolloutData(features=torch.cat(feats), t_frac=torch.cat(tfs), targets=final[chain],
+                       chain=chain + chain_offset)
 
 
 def spearman(a: np.ndarray, b: np.ndarray) -> float:

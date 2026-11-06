@@ -35,6 +35,17 @@ def test_rollout_chains_are_disjoint_between_train_and_val_and_labels_constant_p
     assert len(tr) == 30 * 3 and tr.t_frac.min() > 0
 
 
+def test_every_chain_draws_its_own_distinct_timesteps() -> None:
+    den = ToyDenoiser(num_steps=50)
+    d = collect_rollouts(den, sa_reward, 200, torch.Generator().manual_seed(3), ts_per_chain=5)
+    assert len(d) == 200 * 5 and (d.chain.bincount() == 5).all()        # exactly 5 rows per chain
+    per_chain = [tuple(sorted(d.t_frac[d.chain == c].mul(50).round().int().tolist())) for c in range(200)]
+    assert all(len(set(ts)) == 5 for ts in per_chain)                   # distinct within a chain
+    assert len(set(per_chain)) > 100                                    # but not shared between chains
+    assert set(torch.cat([d.t_frac[d.chain == c] for c in range(200)]).mul(50).round().int().tolist()) == set(range(1, 51))
+    assert d.features.shape == (len(d), den.feature_dim)
+
+
 def test_spearman() -> None:
     import numpy as np
     assert spearman(np.array([1, 2, 3.0]), np.array([10, 20, 30.0])) == 1.0
