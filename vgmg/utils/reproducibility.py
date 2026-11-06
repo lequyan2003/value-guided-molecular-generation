@@ -54,7 +54,7 @@ def log_run_metadata(seed: int) -> dict[str, Any]:
     }
 
 
-STREAM_NAMES = ("rollout_train", "rollout_val", "value_init", "eval")
+STREAM_NAMES = ("rollout_train", "rollout_val", "value_init", "eval", "diagnostics")  # append only: keeps older streams
 
 
 def seed_streams(seed: int) -> dict[str, torch.Generator]:

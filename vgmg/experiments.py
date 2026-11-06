@@ -23,7 +23,8 @@ from vgmg.models.denoiser import Denoiser, ToyDenoiser
 from vgmg.models.value_function import build_value_function
 from vgmg.rl.rewards import get_reward
 from vgmg.rl.svdd import pm_scorer, svdd_sample, value_scorer
-from vgmg.rl.value_trainer import collect_rollouts, evaluate_value_function, train_value_function
+from vgmg.rl.value_trainer import (collect_rollouts, evaluate_value_function, sibling_ranking, train_value_function,
+                                   value_fn_t0_check)
 from vgmg.utils.checkpointing import load_checkpoint, save_checkpoint
 from vgmg.utils.logging import RunLogger, setup_logging
 from vgmg.utils.reproducibility import get_git_commit, seed_streams, set_seed
@@ -70,6 +71,53 @@ def value_fn_dir(cfg: dict[str, Any]) -> Path:
     return Path(cfg["output_dir"]) / "value_fns"
 
 
+def heldout_molecules(cfg: dict[str, Any], denoiser: Denoiser, n: int) -> list[str]:
+    """Up to ``n`` real molecules for the t = 0 sanity check: the committed 1k QM9 validation split (smoke pool for the toy).
+
+    Never used for training or tuning (proposal Sec. 4). Molecules the denoiser cannot encode are skipped.
+    """
+    if cfg["data"]["reference"] == "smoke":
+        pool = list(SMOKE_SMILES)
+    else:
+        from vgmg.data.loaders import load_qm9_smiles, load_split
+        qm9 = load_qm9_smiles()
+        pool = [qm9[i] for i in load_split("val")]
+    out: list[str] = []
+    for smi in pool:
+        if len(out) == n:
+            break
+        try:
+            denoiser.encode([smi])
+        except ValueError:
+            continue
+        out.append(smi)
+    return out
+
+
+def value_diagnostics(cfg: dict[str, Any], denoiser: Denoiser, model: torch.nn.Module,
+                      generator: torch.Generator) -> dict[str, Any]:
+    """Diagnostics that decide whether the value function can be trusted (pre-registered, reported next to every result).
+
+    * ``t0_check``: Spearman / MSE of the value function at t = 0 on real held-out molecules against their true reward.
+    * ``sibling``: H1, within-parent rank agreement between predicted values and mean continued reward of the M
+      children at a few noise levels (what SVDD actually relies on). Sizes: ``value_fn.diag_*`` (0 disables).
+    Each costs network passes (counted in ``denoiser.nfe`` like everything else; reported as ``diag_nfe``).
+    """
+    s, vf = cfg["svdd"], cfg["value_fn"]
+    reward_fn, T = get_reward(s["reward_type"]), denoiser.num_steps
+    nfe0, out = denoiser.nfe, {}
+    n_t0 = vf.get("diag_t0_molecules", 1000)
+    if n_t0:
+        out["t0_check"] = value_fn_t0_check(denoiser, model, heldout_molecules(cfg, denoiser, n_t0), reward_fn)
+    parents, completions = vf.get("diag_sibling_parents", 32), vf.get("diag_sibling_completions", 4)
+    if parents and completions and s["num_candidates_m"] > 1:
+        levels = sorted({max(2, round(f * T)) for f in vf.get("diag_sibling_t_fracs", [0.8, 0.5, 0.2])}, reverse=True)
+        out["sibling"] = [sibling_ranking(denoiser, model, reward_fn, t, parents, s["num_candidates_m"], completions,
+                                          generator) for t in levels]
+    out["diag_nfe"] = denoiser.nfe - nfe0
+    return out
+
+
 def get_value_function(cfg: dict[str, Any], denoiser: Denoiser, log: RunLogger | None = None) -> tuple[torch.nn.Module, dict]:
     """Load the cached value function for (model, reward, arch, seed) or train and cache it.
 
@@ -98,13 +146,15 @@ def get_value_function(cfg: dict[str, Any], denoiser: Denoiser, log: RunLogger |
                                 vf["eval_every"], streams["value_init"])
     diag = {"best_val_mse": hist["best_val_mse"], "val_trace": hist["val_trace"],
             "val": evaluate_value_function(model, val), "train_nfe": denoiser.nfe - nfe0,
-            "n_train_rows": len(train), "n_val_rows": len(val)}
+            "n_train_rows": len(train), "n_val_rows": len(val),
+            **value_diagnostics(cfg, denoiser, model, streams["diagnostics"])}
     value_fn_dir(cfg).mkdir(parents=True, exist_ok=True)
     save_checkpoint(model, ckpt, {"seed": cfg["seed"], "tag": tag})
     diag_path.write_text(json.dumps(diag, indent=2, default=float))
     if log:
         log.info(f"Value fn {tag}: val MSE {diag['val']['mse']:.4f} vs constant {diag['val']['mse_const']:.4f}, "
-                 f"spearman {diag['val']['spearman']:.3f}")
+                 f"spearman {diag['val']['spearman']:.3f}; t=0 spearman {diag.get('t0_check', {}).get('spearman', float('nan')):.3f}"
+                 f"; sibling spearman by t {[round(x['mean_sibling_spearman'], 3) for x in diag.get('sibling', [])]}")
     return model, diag
 
 

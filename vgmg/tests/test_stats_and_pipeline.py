@@ -126,3 +126,14 @@ def test_aggregation_and_verdict_end_to_end_on_toy(tmp_path) -> None:
     v = headline_verdict(rows, tmp_path / "logs", "sa", seeds=[0, 1, 2])
     assert v["seeds"] == [0, 1, 2] and "wins" in v and len(v["bootstrap_ci95"]) == 2
     assert headline_verdict(rows, tmp_path / "logs", "sa", seeds=[0, 1])["status"].startswith("insufficient")
+
+
+def test_value_function_record_carries_t0_and_sibling_diagnostics(tmp_path) -> None:
+    s = run_experiment(_cfg(tmp_path, method="svdd_value", **{"value_fn.diag_sibling_parents": 6}))
+    vf = s["value_fn"]
+    assert vf["t0_check"]["n"] > 0 and "spearman" in vf["t0_check"]
+    assert vf["sibling"] and all(r["m"] == 5 and 2 <= r["t"] <= 4 for r in vf["sibling"])
+    assert vf["diag_nfe"] > 0 and vf["train_nfe"] > 0
+    off = run_experiment(_cfg(tmp_path / "off", method="svdd_value",
+                              **{"value_fn.diag_t0_molecules": 0, "value_fn.diag_sibling_parents": 0}))
+    assert "t0_check" not in off["value_fn"] and "sibling" not in off["value_fn"] and off["value_fn"]["diag_nfe"] == 0

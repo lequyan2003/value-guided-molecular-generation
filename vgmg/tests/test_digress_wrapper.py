@@ -166,3 +166,20 @@ def test_svdd_runs_through_the_wrapper() -> None:
     den.nfe = 0
     out = svdd_sample(den, pm_scorer(get_reward("sa")), 4, 3, gen())
     assert len(out) == 4 and den.nfe == 4 * (3 + 1) * T                    # SVDD-PM: (M+1)*T passes per molecule
+
+
+def test_value_diagnostics_on_real_qm9_molecules_and_digress_states() -> None:
+    """The t = 0 check encodes real QM9 validation molecules; the sibling diagnostic runs on DiGress states."""
+    from vgmg.config import load_config
+    from vgmg.experiments import heldout_molecules, value_diagnostics
+    from vgmg.models.value_function import MLPValueFunction
+
+    den = build_random_digress()
+    cfg = load_config("configs/smoke_test.yaml", ["data.reference=qm9", "svdd.num_candidates_m=3",
+                      "value_fn.diag_t0_molecules=40", "value_fn.diag_sibling_parents=4",
+                      "value_fn.diag_sibling_completions=2", "value_fn.diag_sibling_t_fracs=[0.5]"])
+    mols = heldout_molecules(cfg, den, 40)
+    assert len(mols) == 40 and all(canonicalize(m) for m in mols)
+    out = value_diagnostics(cfg, den, MLPValueFunction(den.feature_dim, 16, 1), gen())
+    assert out["t0_check"]["n"] == 40 and len(out["sibling"]) == 1 and out["sibling"][0]["t"] == den.num_steps // 2
+    assert out["diag_nfe"] > 0

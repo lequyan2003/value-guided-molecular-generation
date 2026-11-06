@@ -30,6 +30,10 @@ value_fn:                                  # trained once per (model, reward, ar
   hidden_dim: 128
   num_hidden: 2
   eval_every: 100
+  diag_t0_molecules: 1000                  # real held-out QM9 molecules (1k val split) for the t=0 check; 0 = off
+  diag_sibling_t_fracs: [0.8, 0.5, 0.2]    # H1: noise levels (as t/T) at which sibling ranking is measured
+  diag_sibling_parents: 32                 # parents per level (0 = off)
+  diag_sibling_completions: 4              # unguided continuations per child that estimate its true value
 
 best_of_n:
   m_values: [5, 10, 20]                    # one pool per seed yields best-of-m for every m and reward
