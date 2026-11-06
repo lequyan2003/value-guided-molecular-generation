@@ -16,7 +16,7 @@ data:
 svdd:
   num_candidates_m: 10                     # M; sweeps use {1, 5, 10, 20}
   reward_type: "sa"                        # sa | qed  (docking_proxy is a stretch goal)
-  value_fn_arch: "mlp"                     # mlp (gnn: planned Nov 14-19, go/no-go Nov 20, dropped if it does not beat the MLP on val MSE)
+  value_fn_arch: "mlp"                     # mlp | gnn (go/no-go Nov 20: dropped if it does not beat the MLP on val MSE)
   selection: "argmax"                      # argmax | softmax
   alpha: 0.1                               # softmax temperature
 
@@ -29,6 +29,8 @@ value_fn:                                  # trained once per (model, reward, ar
   lr: 0.001
   hidden_dim: 128
   num_hidden: 2
+  gnn_hidden_dim: 64                       # GNN arm (A2): message width
+  gnn_layers: 3                            # GNN arm (A2): message-passing layers (proposal: 3-layer)
   eval_every: 100
   diag_t0_molecules: 1000                  # real held-out QM9 molecules (1k val split) for the t=0 check; 0 = off
   diag_sibling_t_fracs: [0.8, 0.5, 0.2]    # H1: noise levels (as t/T) at which sibling ranking is measured

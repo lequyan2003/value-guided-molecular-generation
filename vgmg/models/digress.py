@@ -254,6 +254,17 @@ class DiGressDenoiser:
         n_atoms = state.node_mask.sum(dim=1, keepdim=True).float()
         return (torch.cat([atoms, bonds, n_atoms], dim=1) / self.max_n).cpu()
 
+    @property
+    def graph_shape(self) -> tuple[int, int, int]:
+        """``(max_nodes, atom_classes, bond_classes)``: how ``graph_features`` is laid out (for the GNN value function)."""
+        return self.max_n, self.dx, self.de
+
+    @torch.no_grad()
+    def graph_features(self, state: GraphBatch) -> torch.Tensor:
+        """Flat dense graph ``(B, n*dx + n*n*de + n)`` on CPU: atom one-hots, bond one-hots, node mask (GNN input)."""
+        b = len(state)
+        return torch.cat([state.X.reshape(b, -1), state.E.reshape(b, -1), state.node_mask.float()], dim=1).cpu()
+
     @staticmethod
     def _collapse(state: GraphBatch) -> tuple[torch.Tensor, torch.Tensor]:
         """Argmax atom types ``(B, n)`` and bond classes ``(B, n, n)`` of a one-hot batch."""

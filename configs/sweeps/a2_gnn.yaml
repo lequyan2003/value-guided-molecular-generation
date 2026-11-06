@@ -1,3 +1,4 @@
-# A2 (GNN arm). Proposal: implemented Nov 2-8, DROPPED if it does not beat the MLP on validation MSE by Nov 6.
+# A2 (GNN arm). Proposal: built Nov 14-19, go/no-go Nov 20: DROPPED if it does not beat the MLP on validation MSE.
+# The GNN reads the dense graph state; width and depth: value_fn.gnn_hidden_dim / gnn_layers (64 / 3).
 base: {method: svdd_value, svdd.num_candidates_m: 10, svdd.value_fn_arch: gnn}
 sweep: {svdd.reward_type: [sa, qed], seed: [0, 1, 2]}

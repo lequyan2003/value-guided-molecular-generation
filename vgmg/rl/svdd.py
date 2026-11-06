@@ -19,7 +19,7 @@ from typing import Callable, Literal
 import torch
 from torch import nn
 
-from vgmg.models.denoiser import Denoiser, State
+from vgmg.models.denoiser import Denoiser, State, state_features
 from vgmg.rl.rewards import RewardFn
 
 # A scorer maps (denoiser, children, s) to one score per child, shape (n*m,), where
@@ -42,7 +42,7 @@ def value_scorer(value_fn: nn.Module) -> Scorer:
     """Score children with a learned value function v_phi(x_s, s/T) (SVDD-MLP/GNN)."""
     @torch.no_grad()
     def score(denoiser: Denoiser, children: State, s: int) -> torch.Tensor:
-        feats = denoiser.features(children)
+        feats = state_features(denoiser, children, getattr(value_fn, "feature_kind", "histogram"))
         return value_fn(feats, torch.tensor(s / denoiser.num_steps)).cpu()
     return score
 

@@ -52,6 +52,18 @@ class Denoiser(Protocol):
         """Inverse of ``decode`` for real molecules (clean graphs at t = 0); used for the t=0 sanity check."""
 
 
+def state_features(denoiser: Denoiser, state: State, kind: str = "histogram") -> torch.Tensor:
+    """Value-function input for ``state``: ``kind`` is the value function's ``feature_kind`` attribute.
+
+    ``histogram`` -> ``denoiser.features`` (all generators); ``graph`` -> ``denoiser.graph_features`` (DiGress only).
+    """
+    if kind == "histogram":
+        return denoiser.features(state)
+    if kind == "graph":
+        return denoiser.graph_features(state)  # type: ignore[attr-defined]
+    raise KeyError(f"Unknown feature kind {kind!r}")
+
+
 class ToyDenoiser:
     """Smoke-test stand-in for DiGress. NOT a real generative model.
 

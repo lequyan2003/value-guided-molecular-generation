@@ -18,7 +18,7 @@ import pandas as pd
 import torch
 from torch import nn
 
-from vgmg.models.denoiser import Denoiser
+from vgmg.models.denoiser import Denoiser, state_features
 from vgmg.rl.rewards import RewardFn
 from vgmg.rl.svdd import finish_unguided, select_candidates  # noqa: F401  (re-export for callers)
 
@@ -37,13 +37,14 @@ class RolloutData:
 
 @torch.no_grad()
 def collect_rollouts(denoiser: Denoiser, reward_fn: RewardFn, n: int, generator: torch.Generator,
-                     ts_per_chain: int = 20, chain_offset: int = 0) -> RolloutData:
+                     ts_per_chain: int = 20, chain_offset: int = 0,
+                     feature_kind: str = "histogram") -> RolloutData:
     """Roll out ``n`` unguided chains and keep ``ts_per_chain`` random timesteps of each.
 
     Subsampling timesteps keeps memory at n·ts_per_chain rows instead of n·T. Every chain draws its OWN set of
     distinct timesteps from {1..T} (independent across chains), so the value function sees all noise levels and
     not a handful shared by every row; the features recorded at t are those of the state x_t, i.e. *before* the
-    step from t.
+    step from t. ``feature_kind`` selects the featurizer (the value function's ``feature_kind``).
     """
     T = denoiser.num_steps
     k = min(ts_per_chain, T)
@@ -57,7 +58,7 @@ def collect_rollouts(denoiser: Denoiser, reward_fn: RewardFn, n: int, generator:
     for t in range(T, 0, -1):
         sel = keep[:, t].nonzero().squeeze(1)
         if len(sel):
-            feats.append(denoiser.features(state)[sel])
+            feats.append(state_features(denoiser, state, feature_kind)[sel])
             tfs.append(torch.full((len(sel),), t / T))
             rows.append(sel)
         state = denoiser.propose(state, t, 1, generator)
@@ -149,7 +150,8 @@ def sibling_ranking(denoiser: Denoiser, model: nn.Module, reward_fn: RewardFn, t
     for s in range(T, t, -1):
         state = denoiser.propose(state, s, 1, generator)
     children = denoiser.propose(state, t, m, generator)
-    pred = model(denoiser.features(children), torch.tensor((t - 1) / T)).view(n_parents, m)
+    pred = model(state_features(denoiser, children, getattr(model, "feature_kind", "histogram")),
+                 torch.tensor((t - 1) / T)).view(n_parents, m)
     truth = torch.zeros(n_parents * m)
     for _ in range(completions):
         final = finish_unguided(denoiser, children, t - 1, generator)
@@ -168,7 +170,8 @@ def value_fn_t0_check(denoiser: Denoiser, model: nn.Module, smiles: list[str], r
     value function cannot represent the reward even for clean graphs, so t > 0 results would be meaningless.
     Uses only held-out molecules; never for training or tuning.
     """
-    pred = model(denoiser.features(denoiser.encode(smiles)), torch.tensor(0.0)).numpy()
+    feats = state_features(denoiser, denoiser.encode(smiles), getattr(model, "feature_kind", "histogram"))
+    pred = model(feats, torch.tensor(0.0)).numpy()
     truth = np.array([reward_fn(s) for s in smiles])
     return {"n": len(smiles), "spearman": spearman(pred, truth), "mse": float(np.mean((pred - truth) ** 2)),
             "mse_const": float(np.var(truth))}

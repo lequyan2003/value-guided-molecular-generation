@@ -7,7 +7,7 @@
 | Demo | Mine | `scripts/demo.py` (denoising movie, one SVDD step, head-to-head; live / replay / toy) |
 | SVDD algorithm | Li et al., arXiv:2408.08252; hyanan16/SVDD-molecule @ 455e4d4 read for reference only | Own batched implementation (`vgmg/rl/svdd.py`) written from the paper; ported to discrete graph diffusion |
 | Denoiser interface + NFE accounting | Mine | Batched interface, per-forward-pass counter used for compute-matched comparison (`vgmg/models/denoiser.py`) |
-| Value function (MLP, timestep input) | Standard PyTorch | Own; GNN variant planned Nov 14-19 (go/no-go Nov 20: dropped if it does not beat the MLP on validation MSE), not implemented yet |
+| Value function (MLP, timestep input) | Standard PyTorch | Own MLP and a 3-layer dense message-passing GNN (`vgmg/models/value_function.py`, written 2026-11-06, early; untrained). Go/no-go Nov 20: the GNN is dropped if it does not beat the MLP on validation MSE |
 | Value training + diagnostics | Mine | Chain-level train/val split, per-chain random timesteps, validation model selection, per-t diagnostics, sibling-ranking (H1) and t=0 check recorded with every value function (`vgmg/rl/value_trainer.py`, `vgmg/experiments.py::value_diagnostics`) |
 | Baselines | Mine | Unguided, best-of-N (oracle selector), random selection, SVDD-PM (`vgmg/eval/baselines.py`, `vgmg/rl/svdd.py`) |
 | Rewards | RDKit QED; Ertl & Schuffenhauer SA (RDKit Contrib) | Wrappers + [0,1] rescaling, connected-only validity; docking proxy not implemented |

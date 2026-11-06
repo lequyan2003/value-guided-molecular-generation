@@ -183,3 +183,29 @@ def test_value_diagnostics_on_real_qm9_molecules_and_digress_states() -> None:
     out = value_diagnostics(cfg, den, MLPValueFunction(den.feature_dim, 16, 1), gen())
     assert out["t0_check"]["n"] == 40 and len(out["sibling"]) == 1 and out["sibling"][0]["t"] == den.num_steps // 2
     assert out["diag_nfe"] > 0
+
+
+def test_gnn_value_function_is_permutation_invariant_and_trains_through_the_pipeline(tmp_path) -> None:
+    from vgmg.config import load_config
+    from vgmg.experiments import get_value_function
+    from vgmg.models.value_function import GNNValueFunction
+
+    den = build_random_digress()
+    gnn = GNNValueFunction(*den.graph_shape, hidden_dim=16, num_layers=3)
+    state = den.encode(["CC(=O)N", "C1CC1O"])
+    flat = den.graph_features(state)
+    assert flat.shape == (2, 9 * 4 + 81 * 5 + 9)
+    # relabelling the atoms of a graph must not change the prediction (message passing + pooling are symmetric)
+    perm = torch.tensor([3, 0, 1, 2, 4, 5, 6, 7, 8])
+    p = GraphBatch(state.X[:, perm], state.E[:, perm][:, :, perm], state.node_mask[:, perm])
+    t = torch.tensor(0.5)
+    assert torch.allclose(gnn(flat, t), gnn(den.graph_features(p), t), atol=1e-5)
+    assert (gnn(flat, t) != gnn(den.graph_features(den.encode(["CCCC", "C1CC1O"])), t)).any()  # not constant
+    # end to end: rollouts, training, diagnostics and scoring all select the graph featurizer through feature_kind
+    cfg = load_config("configs/smoke_test.yaml", [f"output_dir={tmp_path}", "svdd.value_fn_arch=gnn", "svdd.num_candidates_m=3",
+                      "value_fn.train_chains=24", "value_fn.val_chains=8", "value_fn.ts_per_chain=2", "value_fn.train_steps=20",
+                      "value_fn.eval_every=10", "value_fn.gnn_hidden_dim=16", "value_fn.diag_t0_molecules=8",
+                      "value_fn.diag_sibling_parents=2", "value_fn.diag_sibling_completions=1", "value_fn.diag_sibling_t_fracs=[0.5]",
+                      "data.reference=qm9"])
+    model, diag = get_value_function(cfg, den)
+    assert isinstance(model, GNNValueFunction) and diag["t0_check"]["n"] == 8 and diag["n_train_rows"] == 48

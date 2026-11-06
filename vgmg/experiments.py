@@ -152,7 +152,10 @@ def get_value_function(cfg: dict[str, Any], denoiser: Denoiser, log: RunLogger |
     h = hashlib.sha1(json.dumps([vf, cfg["model"], model_identity(cfg)], sort_keys=True, default=str).encode()).hexdigest()[:8]
     tag = f"{cfg['model']['name']}_{s['reward_type']}_{s['value_fn_arch']}_s{cfg['seed']}_{h}"
     ckpt, diag_path = value_fn_dir(cfg) / f"{tag}.pt", value_fn_dir(cfg) / f"{tag}.json"
-    model = build_value_function(s["value_fn_arch"], denoiser.feature_dim, vf["hidden_dim"], vf["num_hidden"])
+    width, depth = ((vf["gnn_hidden_dim"], vf["gnn_layers"]) if s["value_fn_arch"] == "gnn"
+                    else (vf["hidden_dim"], vf["num_hidden"]))
+    model = build_value_function(s["value_fn_arch"], denoiser.feature_dim, width, depth,
+                                 getattr(denoiser, "graph_shape", None))
     if ckpt.exists():
         load_checkpoint(model, ckpt)
         model.eval()
@@ -161,9 +164,10 @@ def get_value_function(cfg: dict[str, Any], denoiser: Denoiser, log: RunLogger |
     torch.manual_seed(int(torch.randint(2**31 - 1, (1,), generator=streams["value_init"])))
     reward_fn = get_reward(s["reward_type"])
     nfe0 = denoiser.nfe
-    train = collect_rollouts(denoiser, reward_fn, vf["train_chains"], streams["rollout_train"], vf["ts_per_chain"])
+    train = collect_rollouts(denoiser, reward_fn, vf["train_chains"], streams["rollout_train"], vf["ts_per_chain"],
+                             feature_kind=model.feature_kind)
     val = collect_rollouts(denoiser, reward_fn, vf["val_chains"], streams["rollout_val"], vf["ts_per_chain"],
-                           chain_offset=vf["train_chains"])
+                           chain_offset=vf["train_chains"], feature_kind=model.feature_kind)
     assert set(train.chain.tolist()).isdisjoint(val.chain.tolist()), "train/val chains must be disjoint"
     hist = train_value_function(model, train, val, vf["train_steps"], vf["lr"], vf["batch_size"],
                                 vf["eval_every"], streams["value_init"])
