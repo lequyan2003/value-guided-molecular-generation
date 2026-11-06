@@ -42,12 +42,13 @@ class MLPValueFunction(nn.Module):
 class GNNValueFunction(nn.Module):
     """Message-passing value function on DiGress graph states (proposal arm of ablation A2).
 
-    TODO: Nov 2-8, needs the DiGress state format; dropped if it does not beat the MLP on validation MSE by Nov 6.
+    TODO: Nov 14-19 (after the Slot A talk), needs the DiGress state format; go/no-go Nov 20: dropped if it does not
+    beat the MLP on validation MSE (proposal risk (ii)).
     """
 
     def __init__(self) -> None:
         super().__init__()
-        raise NotImplementedError("GNNValueFunction not implemented yet (planned Nov 2-8)")
+        raise NotImplementedError("GNNValueFunction not implemented yet (planned Nov 14-19, go/no-go Nov 20)")
 
 
 def build_value_function(arch: str, in_dim: int, hidden_dim: int = 128, num_hidden: int = 2) -> nn.Module:

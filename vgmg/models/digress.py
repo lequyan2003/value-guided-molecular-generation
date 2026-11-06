@@ -1,6 +1,7 @@
 """DiGress wrapper (inference only). Implements ``vgmg.models.denoiser.Denoiser``.
 
-TODO(Stage 2, Oct 19-25, see docs/PLAN.md). Verified facts (docs/VERIFICATION.md):
+TODO(Stage 2, re-dated 2026-11-05: write Nov 6-7, exactness tests before the Sun Nov 8 12:00 freeze; see docs/PLAN.md).
+Verified facts (docs/VERIFICATION.md):
   1. Pin cvignac/DiGress @ bdfa10c (git submodule). The official QM9 checkpoint link is DEAD
      (404, issue #109): we train DiGress on QM9 with the unmodified ``qm9_no_h`` config and
      freeze it. Gate G2: DiGress-metric validity >= 97% (paper: 99.0 valid, 96.2 unique).

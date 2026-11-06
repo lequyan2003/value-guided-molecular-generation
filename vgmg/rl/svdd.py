@@ -50,8 +50,9 @@ def value_scorer(value_fn: nn.Module) -> Scorer:
 def pm_scorer(reward_fn: RewardFn) -> Scorer:
     """Score children by r(decoded denoiser x_0-prediction) (SVDD-PM, no learned value).
 
-    Costs one extra network forward pass per child (``predict_x0``), so SVDD-PM spends
-    about m·T forward passes per molecule, the same as best-of-m.
+    Costs one extra network forward pass per child (``predict_x0``) on top of the one pass
+    ``propose`` already spends per parent, so SVDD-PM spends (m+1)·T forward passes per
+    molecule (best-of-m spends m·T; SVDD-MLP only T). Same count as the proposal and the plan.
     """
     def score(denoiser: Denoiser, children: State, s: int) -> torch.Tensor:
         return torch.tensor([reward_fn(smi) for smi in denoiser.predict_x0(children, s)])
