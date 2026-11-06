@@ -1,0 +1,9 @@
+# Line endings: shell and Python scripts stay LF on every OS
+# --- GPU tooling: scripts run on Linux, so LF on every OS ---
+*.sh text eol=lf
+*.sbatch text eol=lf
+*.py text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.pt binary
