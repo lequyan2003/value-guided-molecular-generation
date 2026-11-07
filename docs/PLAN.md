@@ -70,6 +70,20 @@ Today is Thu Nov 5 (night); the talk is Fri Nov 13; slides are due Thu Nov 12 11
 **Slot A scope tiers under this schedule (all inside the proposal):** floor = the proposal's single-GPU fallback scale (N = 1000, B1 + B2 + SVDD-MLP at M = 10, SA, seed 0); target = T1 of Sec. 3 (N = 2000, seeds 0-2, SA, B1, B2, SVDD-MLP, SVDD-PM, random control; the verdict is computed only with >= 3 paired seeds and labeled preliminary); stretch = QED, H1 sibling ranking, partial A1. If the measured s/batch-pass is > 3x the proposal's 0.1 s, apply proposal rule (iii) in this order: seeds 1-2 come after the talk, N to 1000, M grid later.
 **Unchanged after the talk:** Nov 14-22 A1/A2/seeds 3-4, Nov 20 GNN go/no-go, Nov 29 results frozen, Dec 10-11 report. **Demo (not in the proposal, no scientific content):** `scripts/demo.py`, three views (denoising movie, one SVDD step with scores, 16-molecule head-to-head B1/B2/SVDD) in modes live / replay / toy; built Sat-Tue from the same code path as the experiments; replay mode is the default on stage.
 
+## 4b. Progress against Slot A (2026-11-07, Sat): experiments ahead of schedule
+The schedule of Sec. 4a assumed the training would end Nov 8 and the runs Nov 9-10. In fact DiGress finished on Nov 6 (both workstations), the wrapper tests passed on the frozen model on Nov 6 (4090) and Nov 6 night (5090), and **all Slot A runs finished on Nov 7 01:12** (GAIVI 578860 + 4090 + a 5090 replicate). Gates D1, D2 and G3 are met; D3 (freeze Tue Nov 10 18:00) can be met early.
+| T1 item (Sec. 3) | Status 2026-11-07 |
+|---|---|
+| trained DiGress, wrapper tests (a)-(c) on the frozen model | done (4090; 5090 as a check) |
+| B1, B2 (N = 10), SA and QED | done, 3 seeds |
+| SVDD-MLP argmax at M = 10, SA, seeds 0-2 | done: pre-registered verdict **no win** (validity collapse 0.015) |
+| SVDD-PM, random control, SA, 3 seeds | done: PM SA 0.862 (uniqueness 0.54), control = B1 |
+| exploratory softmax arm (alpha 0.1 / 0.03 / 0.01) | done: alpha 0.1 SA 0.669 at validity 0.987 |
+| H1 `sibling_ranking`, t=0 check | done on all 3 value functions: weak (0.04-0.13 early) |
+| `make results`, `make_figures.py` | run on the real data (softmax arm not drawn yet) |
+| SVDD-MLP / PM / control under QED; B2 wall-clock-matched N | **not run** (stretch tier; held back by the "no new experiments" decision of 2026-11-06) |
+Remaining for Friday (no experiments needed): `talk-snapshot` tag (by Nov 10 18:00), qa_notes (all items still open), slides (upload Wed Nov 11 night), figure fixes, demo cache from the real model, rehearsals, code walk-through drill. Everything after the talk (A1, GNN, seeds 3-4, QED for all arms, H4) is Stage 6 and unchanged. Details and the validation of the numbers: `Abel_progress.md` Sec. 8.9-8.13 (private), `docs/PROBLEMS_AND_FIXES.md`.
+
 ## 4. Chronological execution plan
 (Dates in the stage headings below are the **original** dates ("was"); the live dates are in Sec. 4a.)
 Each stage has tasks, an exit milestone with objective criteria, the evidence artifact, and the action if it fails.
@@ -207,10 +221,10 @@ Rounds 1-2: 1. Compute match ill-posed (children share a pass) -> pass counting,
 | Gate | Date | Status | Notes |
 |---|---|---|---|
 | M0 proposal/email, prereg frozen, Slot A signed | Oct 12 | **done 2026-10-17** (slot claim deferred) | revised proposal approved; prereg frozen; sheet not posted yet |
-| G1 env + training launched + timing | was Oct 18; **now D1 Fri Nov 6 18:00** | pending | non-GPU prep done 2026-10-17; re-baselined 2026-11-05 (Sec. 4a); `vgmg` analysis envs built Nov 5 but DiGress env not yet |
-| G2 DiGress validity + wrapper tests + B1 | was Oct 25; **now D2 Sun Nov 8 12:00 (also the Slot A go/no-go)** | pending | merged with G3's go/no-go: the Oct 30 gate date was missed, so its decision moves to D2 |
-| G3 value fn + fallback run | was Oct 30; **now Mon Nov 9** | pending | the go/no-go function moved to D2 |
-| G4 main comparison frozen | was Nov 8; **now D3 Tue Nov 10 18:00** | pending | |
+| G1 env + training launched + timing | was Oct 18; **now D1 Fri Nov 6 18:00** | **done 2026-11-06** | `vgmg-digress` env built on all 3 machines; DiGress trained on the 4090 (6.4 h) and the 5090 (4.7 h), validity 99.2 / 99.1 % |
+| G2 DiGress validity + wrapper tests + B1 | was Oct 25; **now D2 Sun Nov 8 12:00 (also the Slot A go/no-go)** | **done 2026-11-06 (GO)** | frozen = 4090 checkpoint (SHA-256 `ef376a81...`); tests (a)-(c) ALL PASS on the 4090 and the 5090; B1 done (validity 0.992, SA 0.635) |
+| G3 value fn + fallback run | was Oct 30; **now Mon Nov 9** | **done 2026-11-07** | 3 value fns trained (val MSE 9-11 % below constant, Spearman 0.34-0.39); full Slot A run instead of the fallback |
+| G4 main comparison frozen | was Nov 8; **now D3 Tue Nov 10 18:00** | runs **done 2026-11-07**; freeze + tag pending | SA complete (B1, B2, SVDD-MLP, SVDD-PM, control, softmax arm); QED only B1/B2 |
 | G5 talk | Nov 13 (unchanged) | pending | slides uploaded Wed Nov 11 night |
 | G6 all promised runs | Nov 22 | pending | |
 | G7 results frozen | Nov 29 | pending | |
