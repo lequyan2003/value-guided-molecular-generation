@@ -7,6 +7,7 @@ import platform
 import random
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -26,18 +27,34 @@ def set_seed(seed: int) -> None:
     torch.backends.cudnn.benchmark = False
 
 
-def get_git_commit() -> str:
-    """Return the current git commit hash (with ``-dirty`` suffix), or ``unknown``."""
+def get_git_commit(root: Path = REPO_ROOT) -> str:
+    """Return the current git commit hash (with ``-dirty`` suffix), or ``unknown``.
+
+    GAIVI and the workstations hold synced copies without a ``.git`` folder; there the commit comes from the ``.sync_stamp``
+    file written by the sync step (``git_head=...``, ``dirty=yes|no``), so every run record still names the code it ran.
+    """
     try:
         def run(*args: str) -> str:
             return subprocess.check_output(
-                ["git", *args], cwd=REPO_ROOT, stderr=subprocess.DEVNULL, text=True
+                ["git", *args], cwd=root, stderr=subprocess.DEVNULL, text=True
             ).strip()
 
         commit = run("rev-parse", "HEAD")
         return commit + ("-dirty" if run("status", "--porcelain") else "")
     except (subprocess.CalledProcessError, FileNotFoundError):
+        return _commit_from_sync_stamp(root / ".sync_stamp")
+
+
+def _commit_from_sync_stamp(stamp: Path) -> str:
+    """``git_head`` of a synced copy (``-dirty`` if the sync marked it so), or ``unknown`` without a usable stamp."""
+    try:
+        fields = dict(line.split("=", 1) for line in stamp.read_text().splitlines() if "=" in line)
+    except OSError:
         return "unknown"
+    head = fields.get("git_head", "").strip()
+    if not head:
+        return "unknown"
+    return head + ("-dirty" if fields.get("dirty", "no").strip() == "yes" else "")
 
 
 def log_run_metadata(seed: int) -> dict[str, Any]:

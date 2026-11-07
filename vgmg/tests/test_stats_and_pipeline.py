@@ -151,3 +151,17 @@ def test_checkpoint_identity_is_hashed_and_recorded(tmp_path) -> None:
     assert model_identity({"model": {"name": "toy"}}) == {"name": "toy"}
     s = run_experiment(_cfg(tmp_path / "r", method="unguided"))
     assert s["model_identity"] == {"name": "toy"}
+
+
+def test_commit_comes_from_the_sync_stamp_when_there_is_no_git_folder(tmp_path) -> None:
+    """Synced copies on GAIVI / the workstations have no .git; the run record must still name the code (not "unknown")."""
+    from vgmg.utils.reproducibility import get_git_commit
+
+    assert get_git_commit(tmp_path) == "unknown"                              # no git, no stamp
+    stamp = tmp_path / ".sync_stamp"
+    stamp.write_text("synced_at=2026-11-06T12:42:30-05:00\ngit_head=cace13d\ndirty=no\npaths=vgmg scripts\n")
+    assert get_git_commit(tmp_path) == "cace13d"
+    stamp.write_text("git_head=cace13d\ndirty=yes\n")
+    assert get_git_commit(tmp_path) == "cace13d-dirty"
+    stamp.write_text("garbage without fields\n")
+    assert get_git_commit(tmp_path) == "unknown"
