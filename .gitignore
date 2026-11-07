@@ -10,6 +10,7 @@ data/*.csv
 data/*.sdf
 data/raw/
 results/logs/*
+results/replicates/
 *.pt
 *.ckpt
 # LaTeX build artifacts
