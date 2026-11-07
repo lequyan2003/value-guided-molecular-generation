@@ -1,0 +1,10 @@
+{
+  "seed": 0,
+  "git_commit": "unknown",
+  "python": "3.9.23",
+  "torch": "2.0.1+cu118",
+  "cuda": "11.8",
+  "gpu": "NVIDIA TITAN RTX",
+  "platform": "Linux-4.18.0-477.27.1.el8_8.x86_64-x86_64-with-glibc2.28",
+  "wall_clock_s": 40.03
+}

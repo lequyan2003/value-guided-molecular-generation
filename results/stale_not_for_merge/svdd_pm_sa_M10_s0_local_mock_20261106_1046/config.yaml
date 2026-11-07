@@ -1,0 +1,49 @@
+seed: 0
+device: cuda
+output_dir: ./results
+method: svdd_pm
+model:
+  name: toy data.reference=smoke device=cpu output_dir=/pilot_toy seed=0 value_fn.train_chains=40
+    value_fn.val_chains=20 value_fn.ts_per_chain=2 value_fn.train_steps=20 value_fn.eval_every=10
+    value_fn.diag_t0_molecules=10 value_fn.diag_sibling_parents=2 value_fn.diag_sibling_completions=1
+    eval.num_molecules=20 eval.batch_size=20 best_of_n.m_values=[10]
+  digress_checkpoint: digress_qm9_seed0.ckpt
+  toy_num_steps: 4
+data:
+  reference: qm9
+svdd:
+  num_candidates_m: 10
+  reward_type: sa
+  value_fn_arch: mlp
+  selection: argmax
+  alpha: 0.1
+value_fn:
+  train_chains: 10000
+  val_chains: 1000
+  ts_per_chain: 20
+  train_steps: 3000
+  batch_size: 256
+  lr: 0.001
+  hidden_dim: 128
+  num_hidden: 2
+  gnn_hidden_dim: 64
+  gnn_layers: 3
+  eval_every: 100
+  diag_t0_molecules: 1000
+  diag_sibling_t_fracs:
+  - 0.8
+  - 0.5
+  - 0.2
+  diag_sibling_parents: 32
+  diag_sibling_completions: 4
+best_of_n:
+  m_values:
+  - 5
+  - 10
+  - 20
+eval:
+  num_molecules: 2000
+  batch_size: 512
+  report_rewards:
+  - sa
+  - qed
