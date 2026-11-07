@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import re
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -14,8 +16,28 @@ METRIC_COLS = ["reward_mean", "reward_top10", "validity", "validity_digress", "u
 
 
 def load_runs(logs_dir: str | Path) -> list[dict]:
-    """Every finished run's summary (a run is finished iff ``summary.json`` exists)."""
-    return [json.loads(p.read_text()) for p in sorted(Path(logs_dir).glob("*/summary.json"))]
+    """Every finished run's summary (a run is finished iff ``summary.json`` exists).
+
+    A ``summary.json`` without ``run_id`` and ``metrics`` is not a run record (e.g. the smoke-test script writes its own
+    format into the same folder): it is skipped with a warning instead of crashing the whole table.
+    """
+    runs = []
+    for p in sorted(Path(logs_dir).glob("*/summary.json")):
+        rec = json.loads(p.read_text())
+        if "run_id" in rec and "metrics" in rec:
+            runs.append(rec)
+        else:
+            warnings.warn(f"skipping {p.parent.name}: summary.json is not a run record", stacklevel=2)
+    return runs
+
+
+def method_label(run: dict) -> str:
+    """Table label of a run. Softmax runs carry their temperature (read from the run id, which encodes it), because
+    averaging over different alphas would hide the validity collapse of the small ones."""
+    if run["selection"] != "softmax":
+        return run["method"]
+    alpha = re.search(r"softmax([0-9.]+?)_s\d+$", run["run_id"])
+    return f"{run['method']}_softmax" + (f"_a{alpha.group(1)}" if alpha else "")
 
 
 def runs_to_rows(runs: list[dict]) -> pd.DataFrame:
@@ -25,7 +47,7 @@ def runs_to_rows(runs: list[dict]) -> pd.DataFrame:
         for reward, m in r["metrics"].items():
             if r["reward"] not in (None, reward):
                 continue  # a guided run is only evaluated under the reward it optimised
-            rows.append({"method": r["method"] + (f"_{r['selection']}" if r["selection"] == "softmax" else ""),
+            rows.append({"method": method_label(r),
                          "reward": reward, "M": r["M"], "seed": r["seed"], "run_id": r["run_id"], "gpu": r.get("gpu", "unknown"),
                          "nfe_per_molecule": r["nfe_per_molecule"],
                          "wall_s_per_1k": 1000 * r["sample_wall_clock_s"] / r["num_molecules"],

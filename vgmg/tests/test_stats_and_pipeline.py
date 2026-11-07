@@ -130,6 +130,28 @@ def test_aggregation_and_verdict_end_to_end_on_toy(tmp_path) -> None:
     assert headline_verdict(rows, tmp_path / "logs", "sa", seeds=[0, 1])["status"].startswith("insufficient")
 
 
+def test_load_runs_skips_summaries_that_are_not_run_records(tmp_path) -> None:
+    import json
+    import pytest
+    from vgmg.eval.comparison import load_runs, runs_to_rows
+    run_experiment(_cfg(tmp_path, method="unguided", seed=0))
+    odd = tmp_path / "logs" / "smoke_test_other_format"
+    odd.mkdir()
+    (odd / "summary.json").write_text(json.dumps({"seed": 0, "M": 4, "reward": "sa"}))
+    with pytest.warns(UserWarning, match="smoke_test_other_format"):
+        runs = load_runs(tmp_path / "logs")
+    assert [r["run_id"] for r in runs] == ["unguided_s0"]
+    assert set(runs_to_rows(runs).run_id) == {"unguided_s0"}
+
+
+def test_softmax_runs_are_labelled_by_alpha_so_they_are_not_averaged_together() -> None:
+    from vgmg.eval.comparison import method_label
+    soft = {"method": "svdd_value", "selection": "softmax"}
+    assert method_label({**soft, "run_id": "svdd_value_mlp_sa_M10_softmax0.03_s1"}) == "svdd_value_softmax_a0.03"
+    assert method_label({**soft, "run_id": "svdd_value_mlp_sa_M10_softmax0.1_s0"}) == "svdd_value_softmax_a0.1"
+    assert method_label({"method": "svdd_value", "selection": "argmax", "run_id": "svdd_value_mlp_sa_M10_s0"}) == "svdd_value"
+
+
 def test_value_function_record_carries_t0_and_sibling_diagnostics(tmp_path) -> None:
     s = run_experiment(_cfg(tmp_path, method="svdd_value", **{"value_fn.diag_sibling_parents": 6}))
     vf = s["value_fn"]

@@ -31,7 +31,7 @@ def main() -> None:
     out.mkdir(exist_ok=True)
     table.to_csv(out / "summary.csv", index=False)
     cols = ["method", "reward", "M", "n_seeds", "reward_mean", "reward_mean_std", "validity", "validity_std",
-            "diversity", "nfe_per_molecule", "gpus"]
+            "uniqueness", "diversity", "nfe_per_molecule", "gpus"]
     (out / "summary.tex").write_text(to_latex(table, cols))
     verdicts = [headline_verdict(rows, logs, r, seeds=sd) | {"seed_set": name}
                 for r in sorted(rows.reward.unique()) for name, sd in (("all", None), ("0-2 (proposal)", [0, 1, 2]))]
