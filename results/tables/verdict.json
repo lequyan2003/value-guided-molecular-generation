@@ -1,0 +1,56 @@
+[
+  {
+    "reward": "qed",
+    "M": 10,
+    "status": "insufficient paired seeds (0 < 3)",
+    "seed_set": "all"
+  },
+  {
+    "reward": "qed",
+    "M": 10,
+    "status": "insufficient paired seeds (0 < 3)",
+    "seed_set": "0-2 (proposal)"
+  },
+  {
+    "reward": "sa",
+    "M": 10,
+    "method": "svdd_value",
+    "baseline": "best_of_n",
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "bootstrap_ci95": [
+      -0.793134894425,
+      -0.7888271202541667
+    ],
+    "gain": -0.7910153839856763,
+    "noise": 0.013251906084795676,
+    "gain_over_noise": -59.690687431993865,
+    "validity_drop": 0.9846666666666667,
+    "wins": false,
+    "seed_set": "all"
+  },
+  {
+    "reward": "sa",
+    "M": 10,
+    "method": "svdd_value",
+    "baseline": "best_of_n",
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "bootstrap_ci95": [
+      -0.793134894425,
+      -0.7888271202541667
+    ],
+    "gain": -0.7910153839856763,
+    "noise": 0.013251906084795676,
+    "gain_over_noise": -59.690687431993865,
+    "validity_drop": 0.9846666666666667,
+    "wins": false,
+    "seed_set": "0-2 (proposal)"
+  }
+]

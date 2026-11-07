@@ -1,0 +1,51 @@
+{
+  "checkpoint": "results/digress_qm9/train/run/checkpoints/qm9_no_h/last-v1.ckpt",
+  "checkpoint_sha256": "ef376a81e7433089a037412a8653b88168934a3279bfdb4f4068810c550974d2",
+  "device": "cuda",
+  "diffusion_steps": 500,
+  "a_posterior": {
+    "max_abs_diff_X": 5.960464477539063e-08,
+    "max_abs_diff_E": 5.960464477539063e-08,
+    "times": [
+      500,
+      375,
+      250,
+      50,
+      1
+    ],
+    "atol": 1e-06,
+    "passes": true
+  },
+  "b_official_sampler": {
+    "n": 2000,
+    "official": {
+      "validity": 0.993,
+      "uniqueness": 0.9934541792547835
+    },
+    "wrapper": {
+      "validity": 0.995,
+      "uniqueness": 0.9909547738693467
+    },
+    "gap": {
+      "validity": 0.0020000000000000018,
+      "uniqueness": 0.0024994053854368037
+    },
+    "tol": 0.015,
+    "passes": true,
+    "wrapper_validity_connected": 0.9945,
+    "nfe_per_molecule": 500.0,
+    "expected_nfe_per_molecule": 500,
+    "seconds_official": 77.18704080581665,
+    "seconds_wrapper": 76.51039814949036
+  },
+  "c_nfe": {
+    "nfe_propose": 7,
+    "expected_propose": 7,
+    "nfe_total": 49,
+    "network_graphs": 49,
+    "max_chunk": 5,
+    "chunk_limit": 5,
+    "passes": true
+  },
+  "all_pass": true
+}
