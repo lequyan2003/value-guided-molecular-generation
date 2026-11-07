@@ -7,6 +7,6 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH --time=08:00:00
-#SBATCH --output=results/logs/slurm_%j.out
+#SBATCH --output=logs/%x-%j.out
 set -euo pipefail
 python scripts/run_ablations.py "${1:?sweep yaml required}"
