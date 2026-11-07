@@ -10,7 +10,8 @@ data/*.csv
 data/*.sdf
 data/raw/
 results/logs/*
-results/replicates/
+results/replicates/*/*
+!results/replicates/*/.gitkeep
 *.pt
 *.ckpt
 # LaTeX build artifacts
@@ -24,7 +25,10 @@ Abel_progress.md
 
 
 
-logs/
+/logs/*
+!/logs/*/
+/logs/*/*
+!/logs/*/.gitkeep
 outputs/
 *.err
 .sync_stamp
