@@ -49,27 +49,27 @@ def denoising_movie(den: Any, gen: torch.Generator) -> list[dict]:
     return frames
 
 
-def svdd_steps(den: Any, scorer: Any, m: int, gen: torch.Generator) -> list[dict]:
-    """One SVDD chain (n = 1, argmax); at three timesteps record all M children, their scores and the choice."""
+def svdd_steps(den: Any, scorer: Any, m: int, gen: torch.Generator, mode: str = "argmax", alpha: float = 0.1) -> list[dict]:
+    """One SVDD chain (n = 1, selection ``mode`` at temperature ``alpha``); at three timesteps record all M children, their scores and the choice."""
     T = den.num_steps
     shown = {max(1, round(f * T)) for f in STEP_FRACS}
     state, out = den.init(1, gen), []
     for t in range(T, 0, -1):
         children = den.propose(state, t, m, gen)
         values = scorer(den, children, t - 1).view(1, m)
-        choice = int(select_candidates(values, "argmax", 0.1, gen)[0])
+        choice = int(select_candidates(values, mode, alpha, gen)[0])
         if t in shown:
             out.append({"t": t, "children": den.predict_x0(children, t - 1), "values": values[0].tolist(), "chosen": choice})
         state = den.take(children, torch.tensor([choice]))
     return out
 
 
-def head_to_head(den: Any, scorer: Any, reward_fn: Any, m: int, seed: int) -> dict[str, list[dict]]:
+def head_to_head(den: Any, scorer: Any, reward_fn: Any, m: int, seed: int, mode: str = "argmax", alpha: float = 0.1) -> dict[str, list[dict]]:
     """16 molecules per method with their true rewards (invalid = 0), each method on its own seeded stream."""
     gens = {k: torch.Generator().manual_seed(seed + i) for i, k in enumerate(("b1", "b2", "svdd"))}
     mols = {"B1 unguided": sample_unguided(den, N_GRID, gens["b1"]),
             f"B2 best-of-{m}": sample_best_of_n(den, reward_fn, N_GRID, m, gens["b2"]),
-            f"SVDD-MLP M={m}": den.decode(svdd_sample(den, scorer, N_GRID, m, gens["svdd"]))}
+            f"SVDD-MLP M={m} {mode}" + (f" a={alpha}" if mode == "softmax" else ""): den.decode(svdd_sample(den, scorer, N_GRID, m, gens["svdd"], mode, alpha))}
     from vgmg.utils.rdkit_utils import is_valid
     return {k: [{"smiles": s, "reward": reward_fn(s) if is_valid(s) else 0.0} for s in v] for k, v in mols.items()}
 
@@ -78,10 +78,11 @@ def build(cfg: dict, den: Any, value_fn: Any, seed: int) -> dict:
     """Run all three views and return plain, JSON-serialisable data (this is what ``--replay`` re-renders)."""
     m, reward_fn = cfg["svdd"]["num_candidates_m"], get_reward(cfg["svdd"]["reward_type"])
     scorer = value_scorer(value_fn)
+    mode, alpha = cfg["svdd"].get("selection", "argmax"), float(cfg["svdd"].get("alpha", 0.1))
     return {"model": cfg["model"]["name"], "reward": cfg["svdd"]["reward_type"], "M": m, "seed": seed, "T": den.num_steps,
             "movie": denoising_movie(den, torch.Generator().manual_seed(seed)),
-            "steps": svdd_steps(den, scorer, m, torch.Generator().manual_seed(seed + 100)),
-            "grid": head_to_head(den, scorer, reward_fn, m, seed + 200)}
+            "steps": svdd_steps(den, scorer, m, torch.Generator().manual_seed(seed + 100), mode, alpha),
+            "grid": head_to_head(den, scorer, reward_fn, m, seed + 200, mode, alpha)}
 
 
 def _grid_png(smiles: list[str], legends: list[str], path: Path, per_row: int) -> None:
