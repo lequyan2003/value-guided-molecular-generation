@@ -1,48 +1,36 @@
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
 .pytest_cache/
 .ipynb_checkpoints/
 .venv/
 .env
-*.egg-info/
-# Data and run outputs (small split files in data/splits are tracked)
-data/*.csv
-data/*.sdf
-data/raw/
-results/logs/*
-results/replicates/*/*
-!results/replicates/*/.gitkeep
+
+# Local-only material (plans, notes, slides, report sources, run outputs, data, logs)
+/data/
+/docs/
+/logs/
+/results/
+/outputs/
+/vgmg_transfer/
+Abel_progress.md
+
+# Model weights and secrets
 *.pt
 *.ckpt
-# LaTeX build artifacts
+id_*
+*.pem
+*.key
+
+# Build and cluster artifacts
+*.err
+.sync_stamp
 *.aux
 *.log
 *.bbl
 *.blg
 *.out
 *.toc
-Abel_progress.md
-
-
-
-/logs/*
-!/logs/*/
-/logs/*/*
-!/logs/*/.gitkeep
-outputs/
-*.err
-.sync_stamp
-id_*
-*.pem
-*.key
-results/smoke/
-results/value_fns/
-results/fallback/
 *.fls
 *.fdb_latexmk
-
-# DiGress staging data and runs (large)
-data/digress_qm9/
-results/digress_qm9/
-results/demo*/
-vgmg_transfer/

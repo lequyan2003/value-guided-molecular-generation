@@ -91,8 +91,12 @@ def headline_verdict(rows: pd.DataFrame, logs_dir: str | Path, reward: str, M: i
     seeds = sorted(set(a.index) & set(b.index) & (set(seeds) if seeds else set(a.index)))
     if len(seeds) < 3:
         return {"reward": reward, "M": M, "status": f"insufficient paired seeds ({len(seeds)} < 3)"}
+    # Rule 2 of docs/PREREGISTRATION.md compares validity with B1 (unguided), not with the reward baseline.
+    u = rows[(rows.reward == reward) & (rows.method == "unguided")].set_index("seed")
+    if not set(seeds) <= set(u.index):
+        return {"reward": reward, "M": M, "status": "missing unguided (B1) seeds for the validity clause"}
     v = preregistered_verdict(a.loc[seeds, "reward_mean"].tolist(), b.loc[seeds, "reward_mean"].tolist(),
-                              a.loc[seeds, "validity"].tolist(), b.loc[seeds, "validity"].tolist())
+                              a.loc[seeds, "validity"].tolist(), u.loc[seeds, "validity"].tolist())
     lo, hi = paired_bootstrap_ci(_per_molecule(logs_dir, a.loc[seeds, "run_id"].to_dict(), reward),
                                  _per_molecule(logs_dir, b.loc[seeds, "run_id"].to_dict(), reward))
     return {"reward": reward, "M": M, "method": method, "baseline": baseline, "seeds": [int(x) for x in seeds],

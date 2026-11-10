@@ -1,64 +1,59 @@
 # Value-Guided Molecular Generation (SVDD on DiGress)
 
-CIS 6930 (Generative AI, Fall 2026, USF). We apply Soft Value-Based Decoding (SVDD, Li et al. 2024)
-to a pretrained discrete graph diffusion model (DiGress, Vignac et al., ICLR 2023) to steer molecule
-generation toward a reward (synthetic accessibility, QED, docking proxy) **without retraining the
-generator**. At each reverse step we draw M candidates, score them with a learned value function, and
-keep the best. Contribution: sample-efficiency analysis (M) and molecular reward design.
+CIS 6930 (Generative AI, Fall 2026, USF). We apply Soft Value-Based Decoding (SVDD, Li et al., 2024) to a frozen
+discrete graph diffusion model (DiGress, Vignac et al., ICLR 2023) trained on QM9, to steer molecule generation toward a
+reward (synthetic accessibility, QED) **without retraining the generator**. At each reverse step we draw M candidates
+from the denoiser, score them with a learned value function, and keep one. We compare against best-of-N sampling.
 
-## Status (read this first)
+## Main result (SA reward, QM9, 2000 molecules per run, seeds 0-2, mean over seeds)
 
-| Piece | State |
-|---|---|
-| Samplers (unguided, best-of-N, SVDD-PM, SVDD-value, random-select), value fn (MLP + timestep), rewards (SA, QED), metrics, stats, sweeps, tests | implemented, run on a toy generator |
-| DiGress | **not yet trained**: the official QM9 checkpoint is gone, so we train it ourselves (Stage 1-2). Pinned submodule `third_party/DiGress` (`git submodule update --init`), env `scripts/setup_digress_env.sh`, data `scripts/stage_digress_qm9.py`, job `job_scripts/digress_run.sbatch`; wrapper `vgmg/models/digress.py` is a stub |
-| GNN value fn | **not yet** - planned Nov 2-8, dropped if it does not beat the MLP on validation MSE by Nov 6 |
-| Docking proxy | **not yet** - stretch, dropped if not started by Nov 6 |
+| Method | SA reward | Strict validity | DiGress forward passes / molecule |
+|---|---|---|---|
+| Unguided | 0.635 | 0.992 | 500 |
+| Best-of-10 (selects on the true reward) | 0.799 | 1.000 | 5000 |
+| SVDD-MLP, argmax (pre-registered) | 0.008 | 0.015 | 500 |
+| SVDD-MLP, softmax alpha = 0.1 / 0.03 (exploratory) | 0.669 / 0.674 | 0.987 / 0.925 | 500 |
+| SVDD-PM (posterior-mean value, no learned model) | 0.862 | 0.977 | 5500 |
 
-The **smoke test uses `ToyDenoiser`, a stand-in that is not a generative model**; its numbers only show the
-pipeline runs and is reproducible. They are not research results.
-
-Project plan, gates and rubric mapping: [docs/PLAN.md](docs/PLAN.md).
-Problems met along the way and their fixes (for the report and Q&A): [docs/PROBLEMS_AND_FIXES.md](docs/PROBLEMS_AND_FIXES.md).
+The pre-registered SVDD-MLP rule fails: the learned value function is exploited by argmax selection and the guided
+chains leave the data distribution (validity 0.015). Tempering the selection recovers validity but gives only a small
+gain over unguided. Findings and caveats: one DiGress training seed, three sampling seeds, SA reward measured for the
+SVDD arms only (QED for unguided and best-of-10).
 
 ## Install
 
-Python 3.10+ (verified on 3.12), PyTorch 2.x.
+Python 3.10+ (verified on 3.12), PyTorch 2.x. DiGress itself needs Python 3.9 and torch 2.0.1
+(`scripts/setup_digress_env.sh`); the pinned submodule is `third_party/DiGress`
+(`git submodule update --init`). The official QM9 checkpoint link is dead, so DiGress is trained with
+`job_scripts/digress_run.sbatch` and frozen by SHA-256 before any guided run.
 
 ```bash
 pip install -r requirements.txt     # or: conda env create -f environment.yml
 ```
 
-## Smoke test (~3 s on CPU, no download, no GPU)
+## Quick checks (CPU, no download)
 
 ```bash
-make smoke-test          # all five methods on the toy generator, ~3 s
-make test                # 27 unit tests (evaluation correctness, stats, determinism)
+make test           # unit tests: evaluation correctness, statistics, determinism, DiGress wrapper shapes
+make smoke-test     # all five methods on a toy generator (not a generative model; checks the pipeline only)
 ```
 
-Same seed gives identical output. Each run writes `results/logs/<name>_<timestamp>/` with `config.yaml`,
-`seed.txt`, `git_commit.txt`, `metadata.json` (versions, GPU, wall-clock), `summary.json`, and the value-function checkpoint.
-Override any config key: `python scripts/smoke_test.py svdd.num_candidates_m=10 seed=1`.
+Each run writes `config.yaml`, `seed.txt`, `git_commit.txt`, `metadata.json` (versions, GPU, wall-clock),
+`summary.json` and `molecules.csv` to a run folder; any config key can be overridden on the command line, e.g.
+`python scripts/smoke_test.py svdd.num_candidates_m=10 seed=1`.
 
-## Data and full experiments
+## Full experiments
 
 ```bash
-make splits                                   # QM9 download + seeded 1k sanity splits (data/splits, committed)
-make reference                                # reward stats of real QM9 test molecules
-python scripts/run_inference.py method=svdd_pm svdd.reward_type=qed seed=1     # one run
-make sweep SWEEP=configs/sweeps/a1_m_sweep.yaml                                # a sweep; finished runs are skipped
-make results                                  # -> results/tables/{summary.csv,summary.tex,verdict.json}
+make splits       # QM9 download and seeded 1k splits
+make reference    # reward statistics of real QM9 molecules
+python scripts/run_inference.py method=svdd_pm svdd.reward_type=sa seed=1 model.name=digress
+make sweep SWEEP=configs/sweeps/<sweep>.yaml   # finished runs are skipped
+make results      # aggregate runs into summary table and pre-registered verdict
 ```
-Sweeps: `b1_unguided`, `b2_best_of_n`, `a1_m_sweep`, `a2_estimator`, `h2_selection`, `t3_gnn`. Real runs need the DiGress
-wrapper (`model.name=digress`). The analysis rule is fixed in [docs/PREREGISTRATION.md](docs/PREREGISTRATION.md).
-
-## Environments
-Dev/CI: `requirements.txt` (pinned, CPU torch). DiGress was tested on Python 3.9, PyTorch 2.0.1 (CUDA 11.8), torch_geometric 2.3.1,
-rdkit 2023.03.2; this package avoids 3.10-only syntax so it can run in that environment (CI job `compat-digress-env`). The cluster
-environment is built and verified at gate G1 (see `docs/PLAN.md`; `environment-gaivi.yml` is written by `scripts/setup_digress_env.sh`). Verified locally on 2026-10-17: Python 3.9, numpy 1.23.5, pandas 1.4.4, torch 2.0.1 (CPU), rdkit 2023.03.2 pass all 32 tests and the smoke test.
 
 ## Layout
 
-`vgmg/` package (data, models, rl, eval, utils, tests) - `scripts/` entry points - `configs/` YAML (`sweeps/` = experiment matrix) -
-`job_scripts/` Slurm (GAIVI), incl. `digress_run.sbatch` - `third_party/DiGress` pinned submodule - `docs/` plan, pre-registration, proposal, report, `docs/report/` LaTeX (`make compile-proposal`, `make compile-report`).
-Provenance of every component is in [CONTRIBUTIONS.md](CONTRIBUTIONS.md).
+`vgmg/` package (`data`, `models`, `rl`, `eval`, `utils`, `tests`) - `scripts/` entry points - `configs/` YAML
+(`sweeps/` is the experiment matrix) - `job_scripts/` Slurm and workstation launchers - `third_party/DiGress` pinned
+submodule. Provenance of every component is in [CONTRIBUTIONS.md](CONTRIBUTIONS.md).
