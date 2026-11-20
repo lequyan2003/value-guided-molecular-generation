@@ -34,3 +34,7 @@ id_*
 *.toc
 *.fls
 *.fdb_latexmk
+
+# Course handout (not part of the project, not ours to redistribute)
+/CIS6930_Project_Guidelines.pdf
+release_results/figures/

@@ -7,13 +7,14 @@
 | Demo | Mine | `scripts/demo.py` (denoising movie, one SVDD step, head-to-head; live / replay / toy) |
 | SVDD algorithm | Li et al., arXiv:2408.08252; hyanan16/SVDD-molecule @ 455e4d4 read for reference only | Own batched implementation (`vgmg/rl/svdd.py`) written from the paper; ported to discrete graph diffusion |
 | Denoiser interface + NFE accounting | Mine | Batched interface, per-forward-pass counter used for compute-matched comparison (`vgmg/models/denoiser.py`) |
-| Value function (MLP, timestep input) | Standard PyTorch | Own MLP and a 3-layer dense message-passing GNN (`vgmg/models/value_function.py`, written 2026-11-06, early; untrained). Go/no-go Nov 20: the GNN is dropped if it does not beat the MLP on validation MSE |
+| Value function (MLP, timestep input) | Standard PyTorch | Own MLP and a 3-layer dense message-passing GNN (`vgmg/models/value_function.py`). Both trained for the experiments; the GNN passed the proposal's go/no-go on 2026-11-20 (validation MSE 0.01271 vs 0.01298 for the MLP, seed 0) and was run for SA and QED, seeds 0-2 |
 | Value training + diagnostics | Mine | Chain-level train/val split, per-chain random timesteps, validation model selection, per-t diagnostics, sibling-ranking (H1) and t=0 check recorded with every value function (`vgmg/rl/value_trainer.py`, `vgmg/experiments.py::value_diagnostics`) |
+| H4 refit on guided rollouts (exploratory, not in the proposal) | Mine; the iterate-and-aggregate idea is the standard DAgger scheme (Ross et al., 2011) | `vgmg/rl/value_trainer.py::collect_guided_rollouts`, `vgmg/experiments.py::_refit_on_guided_rollouts`, opt-in via `value_fn.refit_rounds`, sweep `configs/sweeps/h4_refit.yaml`; added after the pre-registered result was known and labeled exploratory |
 | Baselines | Mine | Unguided, best-of-N (oracle selector), random selection, SVDD-PM (`vgmg/eval/baselines.py`, `vgmg/rl/svdd.py`) |
 | Rewards | RDKit QED; Ertl & Schuffenhauer SA (RDKit Contrib) | Wrappers + [0,1] rescaling, connected-only validity; docking proxy not implemented |
 | Metrics, statistics, verdict rule | Mine (RDKit for chemistry) | validity/uniqueness/novelty/diversity, paired bootstrap, pre-registered rule (`vgmg/eval/`) |
 | Experiment runner, sweeps, aggregation | Mine | Deterministic run ids, resumable sweeps, summary tables (`vgmg/experiments.py`, `scripts/`) |
 | `ToyDenoiser` | Mine | Smoke-test stand-in only; not a model of molecules |
-| Scaffold, tests, docs drafting | Claude Code (declared) | Reviewed by me; see AI tool declaration in the report |
+| AI coding assistant | Claude Code (declared) | Used for large parts of the implementation (repository scaffold, wrapper, SVDD and value-function code, experiment runner, evaluation harness, tests, job scripts, plan and documentation drafts). The research question, experimental design, pre-registered rule, decisions on what to run, and the checking of every reported number are mine; the exact wording of the declaration is in the report |
 
-Update this table (with commit hashes) as components land.
+Reported numbers come only from run records (`summary.json`, shipped in `release_results/` and regenerated with `make reproduce`); every record stores the git commit, GPU, seed and the checkpoint SHA-256.
