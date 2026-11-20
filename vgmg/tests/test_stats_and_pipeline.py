@@ -152,6 +152,16 @@ def test_softmax_runs_are_labelled_by_alpha_so_they_are_not_averaged_together() 
     assert method_label({"method": "svdd_value", "selection": "argmax", "run_id": "svdd_value_mlp_sa_M10_s0"}) == "svdd_value"
 
 
+def test_gnn_runs_are_a_separate_arm_not_averaged_with_the_mlp_runs() -> None:
+    """A2 compares MLP and GNN value functions; both write method == svdd_value, so the label must come from the run id."""
+    from vgmg.eval.comparison import method_label
+    argmax = {"method": "svdd_value", "selection": "argmax"}
+    assert method_label({**argmax, "run_id": "svdd_value_gnn_sa_M10_s1"}) == "svdd_value_gnn"
+    assert method_label({**argmax, "run_id": "svdd_value_mlp_qed_M10_s1"}) == "svdd_value"
+    assert method_label({"method": "svdd_value", "selection": "softmax",
+                         "run_id": "svdd_value_gnn_sa_M10_softmax0.1_s0"}) == "svdd_value_gnn_softmax_a0.1"
+
+
 def test_value_function_record_carries_t0_and_sibling_diagnostics(tmp_path) -> None:
     s = run_experiment(_cfg(tmp_path, method="svdd_value", **{"value_fn.diag_sibling_parents": 6}))
     vf = s["value_fn"]

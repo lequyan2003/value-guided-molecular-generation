@@ -33,11 +33,13 @@ def load_runs(logs_dir: str | Path) -> list[dict]:
 
 def method_label(run: dict) -> str:
     """Table label of a run. Softmax runs carry their temperature (read from the run id, which encodes it), because
-    averaging over different alphas would hide the validity collapse of the small ones."""
+    averaging over different alphas would hide the validity collapse of the small ones. GNN value-function runs are a
+    separate arm (ablation A2): their run id carries ``_gnn_`` and they must never be averaged with the MLP runs."""
+    base = run["method"] + ("_gnn" if "_gnn_" in run["run_id"] else "")
     if run["selection"] != "softmax":
-        return run["method"]
+        return base
     alpha = re.search(r"softmax([0-9.]+?)_s\d+$", run["run_id"])
-    return f"{run['method']}_softmax" + (f"_a{alpha.group(1)}" if alpha else "")
+    return f"{base}_softmax" + (f"_a{alpha.group(1)}" if alpha else "")
 
 
 def runs_to_rows(runs: list[dict]) -> pd.DataFrame:
