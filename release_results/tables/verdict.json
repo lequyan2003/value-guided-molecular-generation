@@ -1,0 +1,90 @@
+[
+  {
+    "reward": "qed",
+    "M": 10,
+    "method": "svdd_value",
+    "baseline": "best_of_n",
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "bootstrap_ci95": [
+      -0.5613899942825,
+      -0.558857553955
+    ],
+    "gain": -0.5601430106075004,
+    "noise": 0.011338156497940403,
+    "gain_over_noise": -49.40335853621807,
+    "validity_drop": 0.9737999999999999,
+    "wins": false,
+    "seed_set": "all"
+  },
+  {
+    "reward": "qed",
+    "M": 10,
+    "method": "svdd_value",
+    "baseline": "best_of_n",
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "bootstrap_ci95": [
+      -0.5607297095958333,
+      -0.5573569830416666
+    ],
+    "gain": -0.5589995021720876,
+    "noise": 0.01489847517693932,
+    "gain_over_noise": -37.52058486074721,
+    "validity_drop": 0.9703333333333333,
+    "wins": false,
+    "seed_set": "0-2 (proposal)"
+  },
+  {
+    "reward": "sa",
+    "M": 10,
+    "method": "svdd_value",
+    "baseline": "best_of_n",
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "bootstrap_ci95": [
+      -0.7730519462925,
+      -0.767572714715
+    ],
+    "gain": -0.7703564881922448,
+    "noise": 0.05245278180848611,
+    "gain_over_noise": -14.686666019067308,
+    "validity_drop": 0.9469999999999998,
+    "wins": false,
+    "seed_set": "all"
+  },
+  {
+    "reward": "sa",
+    "M": 10,
+    "method": "svdd_value",
+    "baseline": "best_of_n",
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "bootstrap_ci95": [
+      -0.7931346105333333,
+      -0.7888221925833333
+    ],
+    "gain": -0.7910095984943345,
+    "noise": 0.013251906084795676,
+    "gain_over_noise": -59.69025085394201,
+    "validity_drop": 0.977,
+    "wins": false,
+    "seed_set": "0-2 (proposal)"
+  }
+]

@@ -1,0 +1,47 @@
+{
+  "run_id": "random_select_sa_M10_s0",
+  "method": "random_select",
+  "seed": 0,
+  "model": "digress",
+  "M": 10,
+  "reward": "sa",
+  "selection": "argmax",
+  "num_molecules": 2000,
+  "nfe_total": 1000000,
+  "nfe_per_molecule": 500.0,
+  "sample_wall_clock_s": 79.247,
+  "model_identity": {
+    "name": "digress",
+    "checkpoint": "results/digress_qm9/ckpt/digress_qm9_4090_ep1000.ckpt",
+    "checkpoint_sha256": "ef376a81e7433089a037412a8653b88168934a3279bfdb4f4068810c550974d2"
+  },
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "git_commit": "unknown",
+  "value_fn": null,
+  "metrics": {
+    "sa": {
+      "n": 2000.0,
+      "validity": 0.991,
+      "validity_digress": 0.993,
+      "uniqueness": 0.9934409687184662,
+      "novelty": 0.15083798882681565,
+      "reward_mean": 0.6368726456933478,
+      "reward_std": 0.12015338757377583,
+      "reward_top10": 0.8236295370288025,
+      "reward_mean_valid": 0.6426565546855174,
+      "diversity": 0.9191093448815191
+    },
+    "qed": {
+      "n": 2000.0,
+      "validity": 0.991,
+      "validity_digress": 0.993,
+      "uniqueness": 0.9934409687184662,
+      "novelty": 0.15083798882681565,
+      "reward_mean": 0.46602975189751566,
+      "reward_std": 0.08339418410525608,
+      "reward_top10": 0.5834199990534763,
+      "reward_mean_valid": 0.47026211089557585,
+      "diversity": 0.9191093448815191
+    }
+  }
+}

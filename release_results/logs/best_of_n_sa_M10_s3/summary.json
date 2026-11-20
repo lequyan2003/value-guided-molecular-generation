@@ -1,0 +1,48 @@
+{
+  "run_id": "best_of_n_sa_M10_s3",
+  "method": "best_of_n",
+  "seed": 3,
+  "model": "digress",
+  "M": 10,
+  "reward": "sa",
+  "selection": "argmax",
+  "num_molecules": 2000,
+  "nfe_total": 10000000,
+  "nfe_per_molecule": 5000.0,
+  "sample_wall_clock_s": 1690.799,
+  "model_identity": {
+    "name": "digress",
+    "checkpoint": "results/digress_qm9/ckpt/digress_qm9_4090_ep1000.ckpt",
+    "checkpoint_sha256": "ef376a81e7433089a037412a8653b88168934a3279bfdb4f4068810c550974d2"
+  },
+  "gpu": "NVIDIA TITAN RTX",
+  "git_commit": "914a326",
+  "value_fn": null,
+  "metrics": {
+    "sa": {
+      "n": 2000.0,
+      "validity": 1.0,
+      "validity_digress": 1.0,
+      "uniqueness": 0.9515,
+      "novelty": 0.09563846558066211,
+      "reward_mean": 0.8011695068988932,
+      "reward_std": 0.05681907943832035,
+      "reward_top10": 0.9075499960916181,
+      "reward_mean_valid": 0.8011695068988932,
+      "diversity": 0.9176022786776556
+    },
+    "qed": {
+      "n": 2000.0,
+      "validity": 1.0,
+      "validity_digress": 1.0,
+      "uniqueness": 0.9515,
+      "novelty": 0.09563846558066211,
+      "reward_mean": 0.5129315758286613,
+      "reward_std": 0.06968714279651828,
+      "reward_top10": 0.6133715808179243,
+      "reward_mean_valid": 0.5129315758286613,
+      "diversity": 0.9176022786776556
+    }
+  },
+  "pool_m": 10
+}
