@@ -20,7 +20,7 @@ from torch import nn
 
 from vgmg.models.denoiser import Denoiser, state_features
 from vgmg.rl.rewards import RewardFn
-from vgmg.rl.svdd import finish_unguided, select_candidates  # noqa: F401  (re-export for callers)
+from vgmg.rl.svdd import Scorer, finish_unguided, select_candidates  # noqa: F401  (re-export for callers)
 
 
 @dataclass
@@ -66,6 +66,54 @@ def collect_rollouts(denoiser: Denoiser, reward_fn: RewardFn, n: int, generator:
     chain = torch.cat(rows)
     return RolloutData(features=torch.cat(feats), t_frac=torch.cat(tfs), targets=final[chain],
                        chain=chain + chain_offset)
+
+
+@torch.no_grad()
+def collect_guided_rollouts(denoiser: Denoiser, reward_fn: RewardFn, scorer: Scorer, m: int, n: int,
+                            generator: torch.Generator, ts_per_chain: int = 20, chain_offset: int = 0,
+                            feature_kind: str = "histogram", mode: str = "argmax",
+                            alpha: float = 0.1) -> RolloutData:
+    """H4: roll out ``n`` chains guided by ``scorer`` (SVDD with ``m`` children per step) instead of unguided.
+
+    Same bookkeeping as ``collect_rollouts`` (each chain draws its own distinct timesteps; the features recorded
+    at t are those of the state x_t before the step from t; the label is r(x_0) of the molecule the chain ends in),
+    but the chain follows the SVDD policy, so the rows come from the states the guided sampler actually visits.
+    Those states (and their true outcomes, e.g. invalid molecules scoring 0) are what an unguided-only training set
+    never shows the value function: this is the distribution shift of docs/PREREGISTRATION.md (approximation 2).
+    """
+    T = denoiser.num_steps
+    k = min(ts_per_chain, T)
+    chosen = torch.rand(n, T, generator=generator).argsort(dim=1)[:, :k] + 1
+    keep = torch.zeros(n, T + 1, dtype=torch.bool)
+    keep.scatter_(1, chosen, True)
+    state = denoiser.init(n, generator)
+    feats: list[torch.Tensor] = []
+    tfs: list[torch.Tensor] = []
+    rows: list[torch.Tensor] = []
+    for t in range(T, 0, -1):
+        sel = keep[:, t].nonzero().squeeze(1)
+        if len(sel):
+            feats.append(state_features(denoiser, state, feature_kind)[sel])
+            tfs.append(torch.full((len(sel),), t / T))
+            rows.append(sel)
+        children = denoiser.propose(state, t, m, generator)
+        if m == 1:
+            state = children
+            continue
+        values = scorer(denoiser, children, t - 1).view(n, m)
+        choice = select_candidates(values, mode, alpha, generator)
+        state = denoiser.take(children, torch.arange(n) * m + choice)
+    final = torch.tensor([reward_fn(smi) for smi in denoiser.decode(state)], dtype=torch.float32)
+    chain = torch.cat(rows)
+    return RolloutData(features=torch.cat(feats), t_frac=torch.cat(tfs), targets=final[chain],
+                       chain=chain + chain_offset)
+
+
+def concat_rollouts(a: RolloutData, b: RolloutData) -> RolloutData:
+    """Aggregate two rollout sets (their chain ids must already be disjoint)."""
+    assert set(a.chain.tolist()).isdisjoint(b.chain.tolist()), "aggregated rollout sets must have disjoint chains"
+    return RolloutData(torch.cat([a.features, b.features]), torch.cat([a.t_frac, b.t_frac]),
+                       torch.cat([a.targets, b.targets]), torch.cat([a.chain, b.chain]))
 
 
 def spearman(a: np.ndarray, b: np.ndarray) -> float:

@@ -197,3 +197,10 @@ def test_commit_comes_from_the_sync_stamp_when_there_is_no_git_folder(tmp_path) 
     assert get_git_commit(tmp_path) == "cace13d-dirty"
     stamp.write_text("garbage without fields\n")
     assert get_git_commit(tmp_path) == "unknown"
+
+
+def test_h4_runs_are_a_separate_arm_in_the_results_table() -> None:
+    from vgmg.eval.comparison import method_label
+    row = {"method": "svdd_value", "selection": "argmax"}
+    assert method_label({**row, "run_id": "svdd_value_mlp_sa_M10_h4r2_s0"}) == "svdd_value_h4r2"
+    assert method_label({**row, "run_id": "svdd_value_mlp_sa_M10_s0"}) == "svdd_value"

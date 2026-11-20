@@ -56,3 +56,47 @@ def test_sibling_ranking_runs() -> None:
     out = sibling_ranking(ToyDenoiser(), MLPValueFunction(128, 16, 1), sa_reward, 2, 20, 4, 3,
                           torch.Generator().manual_seed(0))
     assert out["n_parents_used"] >= 0 and out["m"] == 4
+
+
+def test_guided_rollouts_with_one_candidate_equal_unguided_rollouts() -> None:
+    """With m = 1 the guided collector must consume the RNG exactly like the unguided one (no hidden selection)."""
+    from vgmg.rl.value_trainer import collect_guided_rollouts
+    den = ToyDenoiser(num_steps=6)
+    a = collect_rollouts(den, sa_reward, 40, torch.Generator().manual_seed(5), ts_per_chain=3)
+    b = collect_guided_rollouts(den, sa_reward, lambda d, c, s: torch.zeros(len(c)), 1, 40,
+                                torch.Generator().manual_seed(5), ts_per_chain=3)
+    assert torch.equal(a.features, b.features) and torch.equal(a.targets, b.targets) and torch.equal(a.chain, b.chain)
+
+
+def test_guided_rollouts_follow_the_scorer_and_aggregation_keeps_chains_disjoint() -> None:
+    from vgmg.rl.value_trainer import collect_guided_rollouts, concat_rollouts
+    import pytest
+    den = ToyDenoiser(num_steps=8)
+    prefer_long = lambda d, c, s: torch.tensor([float(len(x)) for x in d.decode(c)])  # noqa: E731
+    prefer_short = lambda d, c, s: -prefer_long(d, c, s)  # noqa: E731
+    long_ = collect_guided_rollouts(den, sa_reward, prefer_long, 5, 200, torch.Generator().manual_seed(1), ts_per_chain=2)
+    short = collect_guided_rollouts(den, sa_reward, prefer_short, 5, 200, torch.Generator().manual_seed(1), ts_per_chain=2,
+                                    chain_offset=1000)
+    assert long_.targets.numel() == 400 and torch.all(long_.t_frac > 0)
+    assert not torch.equal(long_.targets, short.targets)      # the selection rule changes where chains end
+    both = concat_rollouts(long_, short)
+    assert len(both) == len(long_) + len(short)
+    with pytest.raises(AssertionError):
+        concat_rollouts(long_, long_)                         # overlapping chain ids are refused
+
+
+def test_refit_rounds_change_run_id_and_cache_tag_but_not_default_ones(tmp_path) -> None:
+    """H4 is opt-in: with refit_rounds absent every run id and cache key is the old one; with it, both carry h4r<k>."""
+    from vgmg.config import load_config
+    from vgmg.experiments import get_value_function, make_run_id
+    base = [f"output_dir={tmp_path}", "svdd.num_candidates_m=3", "value_fn.train_chains=30", "value_fn.val_chains=10",
+            "value_fn.ts_per_chain=3", "value_fn.train_steps=20", "value_fn.eval_every=10", "value_fn.diag_t0_molecules=0",
+            "value_fn.diag_sibling_parents=0", "seed=1"]
+    plain = load_config("configs/smoke_test.yaml", base)
+    h4 = load_config("configs/smoke_test.yaml", base + ["value_fn.refit_rounds=2"])
+    assert make_run_id(plain) == "svdd_value_mlp_sa_M3_s1" and make_run_id(h4) == "svdd_value_mlp_sa_M3_h4r2_s1"
+    from vgmg.experiments import build_denoiser
+    model, diag = get_value_function(h4, build_denoiser(h4))
+    assert [r["round"] for r in diag["refit"]] == [1, 2]
+    assert diag["n_train_rows"] == 30 * 3 * (1 + 2) and "refit" not in get_value_function(plain, build_denoiser(plain))[1]
+    assert any("h4r2" in p.name for p in (tmp_path / "value_fns").glob("*.pt"))

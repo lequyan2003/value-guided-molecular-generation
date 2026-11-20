@@ -1,0 +1,6 @@
+# H4 (exploratory, T3; not part of the proposal's required set): SVDD-MLP whose value function is refit for 2 rounds on
+# rollouts guided by its own previous version (DAgger-style aggregation), M = 10, argmax (the pre-registered rule),
+# SA and QED, seeds 0-2. Tests whether the collapse of the pre-registered SVDD-MLP is the distribution shift between the
+# unguided training rollouts and the states the guided sampler visits (docs/PREREGISTRATION.md, approximation 2).
+base: {method: svdd_value, svdd.num_candidates_m: 10, svdd.selection: argmax, value_fn.refit_rounds: 2}
+sweep: {svdd.reward_type: [sa, qed], seed: [0, 1, 2]}

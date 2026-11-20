@@ -24,8 +24,8 @@ from vgmg.models.denoiser import Denoiser, ToyDenoiser
 from vgmg.models.value_function import build_value_function
 from vgmg.rl.rewards import get_reward
 from vgmg.rl.svdd import pm_scorer, svdd_sample, value_scorer
-from vgmg.rl.value_trainer import (collect_rollouts, evaluate_value_function, sibling_ranking, train_value_function,
-                                   value_fn_t0_check)
+from vgmg.rl.value_trainer import (collect_guided_rollouts, collect_rollouts, concat_rollouts, evaluate_value_function,
+                                   sibling_ranking, train_value_function, value_fn_t0_check)
 from vgmg.utils.checkpointing import load_checkpoint, save_checkpoint
 from vgmg.utils.logging import RunLogger, setup_logging
 from vgmg.utils.reproducibility import get_git_commit, seed_streams, set_seed
@@ -84,6 +84,8 @@ def make_run_id(cfg: dict[str, Any]) -> str:
     parts = [method, s["reward_type"], f"M{s['num_candidates_m']}"]
     if method == "svdd_value":
         parts.insert(1, s["value_fn_arch"])
+        if cfg["value_fn"].get("refit_rounds", 0):  # H4 (exploratory): value function refit on its own guided rollouts
+            parts.append(f"h4r{cfg['value_fn']['refit_rounds']}")
     if method in ("svdd_value", "svdd_pm") and s["selection"] == "softmax":
         parts.append(f"softmax{s['alpha']}")
     return "_".join(parts) + f"_s{seed}"
@@ -141,6 +143,44 @@ def value_diagnostics(cfg: dict[str, Any], denoiser: Denoiser, model: torch.nn.M
     return out
 
 
+def _refit_on_guided_rollouts(cfg: dict[str, Any], denoiser: Denoiser, model: torch.nn.Module, reward_fn,
+                              train, val, streams, log: RunLogger | None):
+    """H4 (exploratory, not in the proposal's required set): DAgger-style refit of the value function.
+
+    Round k: roll out ``train_chains`` / ``val_chains`` chains guided by the CURRENT value function with the same
+    selection rule and M used at evaluation, label every kept state with the true r(x_0) of its chain, add the rows
+    to the training / validation sets (aggregation keeps the unguided rows), and continue training the same network
+    (best validation MSE on the aggregated validation set). Fresh RNG streams per round and fresh chain ids, so
+    training and validation chains stay disjoint and none of the data coincides with evaluation sampling.
+    """
+    import numpy as np
+    s, vf = cfg["svdd"], cfg["value_fn"]
+    width = vf["train_chains"] + vf["val_chains"]
+    refit_log: list[dict] = []
+    hist = None
+    for k in range(1, int(vf["refit_rounds"]) + 1):
+        ss = np.random.SeedSequence([cfg["seed"], 4000 + k]).spawn(2)
+        g_tr, g_va = (torch.Generator().manual_seed(int(c.generate_state(1)[0])) for c in ss)
+        scorer = value_scorer(model)
+        kw = dict(m=s["num_candidates_m"], ts_per_chain=vf["ts_per_chain"], feature_kind=model.feature_kind,
+                  mode=s["selection"], alpha=s["alpha"])
+        gtr = collect_guided_rollouts(denoiser, reward_fn, scorer, n=vf["train_chains"], generator=g_tr,
+                                      chain_offset=width * k, **kw)
+        gva = collect_guided_rollouts(denoiser, reward_fn, scorer, n=vf["val_chains"], generator=g_va,
+                                      chain_offset=width * k + vf["train_chains"], **kw)
+        train, val = concat_rollouts(train, gtr), concat_rollouts(val, gva)
+        hist = train_value_function(model, train, val, vf["train_steps"], vf["lr"], vf["batch_size"],
+                                    vf["eval_every"], streams["value_init"])
+        rec = {"round": k, "guided_train_rows": len(gtr), "guided_mean_final_reward": float(gtr.targets.mean()),
+               "guided_frac_zero_reward": float((gtr.targets == 0).float().mean()),
+               "best_val_mse": hist["best_val_mse"]}
+        refit_log.append(rec)
+        if log:
+            log.info(f"H4 refit round {k}: guided chains end with mean reward {rec['guided_mean_final_reward']:.3f} "
+                     f"({rec['guided_frac_zero_reward']:.2f} invalid), aggregated val MSE {rec['best_val_mse']:.4f}")
+    return train, val, hist, refit_log
+
+
 def get_value_function(cfg: dict[str, Any], denoiser: Denoiser, log: RunLogger | None = None) -> tuple[torch.nn.Module, dict]:
     """Load the cached value function for (model, reward, arch, seed) or train and cache it.
 
@@ -150,7 +190,9 @@ def get_value_function(cfg: dict[str, Any], denoiser: Denoiser, log: RunLogger |
     s, vf = cfg["svdd"], cfg["value_fn"]
     # the hash makes a changed value_fn config or checkpoint miss the cache instead of silently reusing a stale model
     h = hashlib.sha1(json.dumps([vf, cfg["model"], model_identity(cfg)], sort_keys=True, default=str).encode()).hexdigest()[:8]
-    tag = f"{cfg['model']['name']}_{s['reward_type']}_{s['value_fn_arch']}_s{cfg['seed']}_{h}"
+    rounds = int(vf.get("refit_rounds", 0))   # H4; absent in default.yaml so every earlier cache key and run id is unchanged
+    tag = f"{cfg['model']['name']}_{s['reward_type']}_{s['value_fn_arch']}" + (f"_h4r{rounds}" if rounds else "") \
+          + f"_s{cfg['seed']}_{h}"
     ckpt, diag_path = value_fn_dir(cfg) / f"{tag}.pt", value_fn_dir(cfg) / f"{tag}.json"
     width, depth = ((vf["gnn_hidden_dim"], vf["gnn_layers"]) if s["value_fn_arch"] == "gnn"
                     else (vf["hidden_dim"], vf["num_hidden"]))
@@ -171,9 +213,13 @@ def get_value_function(cfg: dict[str, Any], denoiser: Denoiser, log: RunLogger |
     assert set(train.chain.tolist()).isdisjoint(val.chain.tolist()), "train/val chains must be disjoint"
     hist = train_value_function(model, train, val, vf["train_steps"], vf["lr"], vf["batch_size"],
                                 vf["eval_every"], streams["value_init"])
+    refit = _refit_on_guided_rollouts(cfg, denoiser, model, reward_fn, train, val, streams, log) if rounds else None
+    if refit is not None:
+        train, val, hist, refit_log = refit
     diag = {"best_val_mse": hist["best_val_mse"], "val_trace": hist["val_trace"],
             "val": evaluate_value_function(model, val), "train_nfe": denoiser.nfe - nfe0,
             "n_train_rows": len(train), "n_val_rows": len(val),
+            **({"refit": refit_log} if refit is not None else {}),
             **value_diagnostics(cfg, denoiser, model, streams["diagnostics"])}
     value_fn_dir(cfg).mkdir(parents=True, exist_ok=True)
     save_checkpoint(model, ckpt, {"seed": cfg["seed"], "tag": tag})

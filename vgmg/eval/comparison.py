@@ -36,6 +36,9 @@ def method_label(run: dict) -> str:
     averaging over different alphas would hide the validity collapse of the small ones. GNN value-function runs are a
     separate arm (ablation A2): their run id carries ``_gnn_`` and they must never be averaged with the MLP runs."""
     base = run["method"] + ("_gnn" if "_gnn_" in run["run_id"] else "")
+    refit = re.search(r"_h4r(\d+)(?:_|$)", run["run_id"])  # H4 arm (value function refit on guided rollouts)
+    if refit:
+        base += f"_h4r{refit.group(1)}"
     if run["selection"] != "softmax":
         return base
     alpha = re.search(r"softmax([0-9.]+?)_s\d+$", run["run_id"])
