@@ -13,7 +13,11 @@ import torch
 for _mod in ("pytorch_lightning", "torch_geometric", "omegaconf", "wandb", "torchmetrics"):
     pytest.importorskip(_mod)
 
-from vgmg.models.digress import GraphBatch, digress_validity, sample_categorical  # noqa: E402
+from vgmg.models.digress import DIGRESS_ROOT, GraphBatch, digress_validity, sample_categorical  # noqa: E402
+
+if not (DIGRESS_ROOT / "src").is_dir():  # a clone without `git submodule update --init` has no DiGress source
+    pytest.skip("third_party/DiGress is not checked out (run: git submodule update --init)", allow_module_level=True)
+
 from vgmg.models.digress_checks import (  # noqa: E402
     check_nfe_accounting, check_posterior_exactness, compare_with_official_sampler)
 from vgmg.tests.digress_fixture import build_random_digress, pool_smiles  # noqa: E402
