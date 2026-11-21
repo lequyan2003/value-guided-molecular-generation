@@ -24,7 +24,7 @@ SA reward = (10 - SA)/9, invalid molecules score 0. Every number comes from the 
 **Verdict (pre-registered rule, `docs/PREREGISTRATION.md`): the hypothesis is rejected.** SVDD-MLP does not beat
 best-of-10 for either reward (SA gain -0.770 vs noise 0.052; QED gain -0.560 vs noise 0.011; validity 0.947 / 0.974 below
 unguided, 5 paired seeds; `release_results/tables/verdict.json`). The learned value function is exploited by argmax
-selection: it ranks the children of one parent barely better than chance (sibling Spearman 0.0-0.3) and the
+selection: it ranks the children of one parent barely better than chance (within-parent Spearman between -0.06 and 0.31) and the
 guided chains leave the data distribution, so the molecules become invalid. The collapse worsens with M (A1: M = 1 equals
 unguided, M = 5 and 20 collapse). Refitting the value function on its own guided rollouts (H4, exploratory) removes most of the
 collapse, which supports the distribution-shift explanation, but it still does not beat best-of-10 or unguided.
@@ -54,7 +54,9 @@ SHA-256 of every run) and writes `release_results/tables/` and `release_results/
 frozen checkpoint (below) and a GPU: `make headline` runs every proposal experiment, `make exploratory` the two extra arms;
 `job_scripts/` has the Slurm and workstation launchers used.
 
-**Frozen DiGress checkpoint.** It is 128 MB, so it is not in git. It is our own training run (seed 0, 1000 epochs, the repository's
+**Frozen DiGress checkpoint.** It is 128 MB, so it is not in git: download it from the
+[`checkpoint-v1` release](https://github.com/lequyan2003/value-guided-molecular-generation/releases/tag/checkpoint-v1) into
+`results/digress_qm9/ckpt/` and check `sha256sum -c SHA256SUMS.txt`. It is our own training run (seed 0, 1000 epochs, the repository's
 unmodified `qm9_no_h` config, torch 2.0.1, validity 99.2 %), SHA-256
 `ef376a81e7433089a037412a8653b88168934a3279bfdb4f4068810c550974d2`; every run record stores this hash. To recreate it, run
 `job_scripts/digress_run.sbatch` (or `job_scripts/digress_ws.sh train`; about 6.4 h on one RTX 4090). Training is not bit-identical
