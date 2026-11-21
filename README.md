@@ -28,6 +28,9 @@ selection: it ranks the children of one parent barely better than chance (within
 guided chains leave the data distribution, so the molecules become invalid. The collapse worsens with M (A1: M = 1 equals
 unguided, M = 5 and 20 collapse). Refitting the value function on its own guided rollouts (H4, exploratory) removes most of the
 collapse, which supports the distribution-shift explanation, but it still does not beat best-of-10 or unguided.
+A value-function sensitivity check (exploratory, SA, 3 seeds each) shows the failure is not an artefact of one untuned configuration: 3x more
+rollouts, a wider network or a lower learning rate still collapse (validity 0.013 / 0.062 / 0.006, SA reward 0.007 / 0.035 / 0.004), and 3x more
+training steps helps only partly (validity 0.435, SA reward 0.313); every variant stays far below best-of-10 (gain -0.49 to -0.80).
 The training-free SVDD-PM is the strongest method but spends (M+1)T passes and loses diversity (uniqueness 0.54).
 Caveats: one DiGress training run (all conclusions are conditional on that model), the best-of-N selector uses the true
 reward (an oracle), and wall-clock is only comparable within one GPU type (`release_results/tables/wall_clock_by_gpu.csv`).

@@ -60,10 +60,14 @@ headline:
 	python scripts/run_ablations.py configs/sweeps/extra_seeds_b2.yaml
 	python scripts/generate_results_table.py
 
-# Exploratory (not in the proposal): H4 refit of the value function on its own guided rollouts; softmax selection arm.
+# Exploratory (not in the proposal): H4 refit, softmax arm, value-function sensitivity (4 variants).
 exploratory:
 	python scripts/run_ablations.py configs/sweeps/h4_refit.yaml
 	python scripts/run_ablations.py configs/sweeps/slot_a_svdd_softmax.yaml
+	python scripts/run_ablations.py configs/sweeps/vf_sensitivity.yaml run_tag=data30k value_fn.train_chains=30000
+	python scripts/run_ablations.py configs/sweeps/vf_sensitivity.yaml run_tag=steps10k value_fn.train_steps=10000
+	python scripts/run_ablations.py configs/sweeps/vf_sensitivity.yaml run_tag=wide value_fn.hidden_dim=256 value_fn.num_hidden=3
+	python scripts/run_ablations.py configs/sweeps/vf_sensitivity.yaml run_tag=lowlr value_fn.lr=0.0003
 
 # Slot A talk results in priority order (docs/PLAN.md Sec. 4a): B1, B2 (N = M = 10), SVDD-MLP (M = 10, SA), then PM + random control.
 slot-a:

@@ -1,5 +1,27 @@
 [
   {
+    "reward": "sa",
+    "M": 10,
+    "method": "svdd_value_data30k",
+    "baseline": "best_of_n",
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "bootstrap_ci95": [
+      -0.7940774708541667,
+      -0.7898056929958333
+    ],
+    "gain": -0.7919609236691182,
+    "noise": 0.010779911840941883,
+    "gain_over_noise": -73.46636367296315,
+    "validity_drop": 0.9793333333333333,
+    "wins": false,
+    "seed_set": "all paired seeds",
+    "exploratory": true
+  },
+  {
     "reward": "qed",
     "M": 10,
     "method": "svdd_value_gnn",
@@ -90,6 +112,28 @@
   {
     "reward": "sa",
     "M": 10,
+    "method": "svdd_value_lowlr",
+    "baseline": "best_of_n",
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "bootstrap_ci95": [
+      -0.7974287048291666,
+      -0.7939788976500001
+    ],
+    "gain": -0.7957452039455521,
+    "noise": 0.006099084825887423,
+    "gain_over_noise": -130.46960759883683,
+    "validity_drop": 0.986,
+    "wins": false,
+    "seed_set": "all paired seeds",
+    "exploratory": true
+  },
+  {
+    "reward": "sa",
+    "M": 10,
     "method": "svdd_value_softmax_a0.01",
     "baseline": "best_of_n",
     "seeds": [
@@ -149,6 +193,50 @@
     "noise": 0.0019235476913743498,
     "gain_over_noise": -67.84249500594234,
     "validity_drop": 0.005166666666666653,
+    "wins": false,
+    "seed_set": "all paired seeds",
+    "exploratory": true
+  },
+  {
+    "reward": "sa",
+    "M": 10,
+    "method": "svdd_value_steps10k",
+    "baseline": "best_of_n",
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "bootstrap_ci95": [
+      -0.49552894910833334,
+      -0.4772112801375
+    ],
+    "gain": -0.4863961624468712,
+    "noise": 0.06880472792775304,
+    "gain_over_noise": -7.069225867117756,
+    "validity_drop": 0.5573333333333332,
+    "wins": false,
+    "seed_set": "all paired seeds",
+    "exploratory": true
+  },
+  {
+    "reward": "sa",
+    "M": 10,
+    "method": "svdd_value_wide",
+    "baseline": "best_of_n",
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "bootstrap_ci95": [
+      -0.7676277506541667,
+      -0.7601425898499999
+    ],
+    "gain": -0.763857267912315,
+    "noise": 0.03326222555264396,
+    "gain_over_noise": -22.964707118089915,
+    "validity_drop": 0.9306666666666666,
     "wins": false,
     "seed_set": "all paired seeds",
     "exploratory": true
