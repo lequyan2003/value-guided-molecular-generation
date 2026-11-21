@@ -1,0 +1,7 @@
+# Value-function sensitivity (exploratory, not in the proposal's required set): is the SVDD-MLP collapse an artefact of ONE untuned
+# value-function configuration? Four variants of the pre-registered SVDD-MLP (M = 10, argmax, SA, seeds 0-2), each differing from
+# configs/default.yaml in one respect. Variants are judged by validation MSE and the same pre-registered rule; none is chosen by
+# test reward. Each variant needs its own run_tag so run ids and cached value functions never collide with the default runs.
+# Run one variant per call, e.g.:  python scripts/run_ablations.py configs/sweeps/vf_sensitivity.yaml run_tag=data30k value_fn.train_chains=30000
+base: {method: svdd_value, svdd.num_candidates_m: 10, svdd.reward_type: sa, svdd.selection: argmax}
+sweep: {seed: [0, 1, 2]}

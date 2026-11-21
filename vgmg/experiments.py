@@ -88,6 +88,8 @@ def make_run_id(cfg: dict[str, Any]) -> str:
             parts.append(f"h4r{cfg['value_fn']['refit_rounds']}")
     if method in ("svdd_value", "svdd_pm") and s["selection"] == "softmax":
         parts.append(f"softmax{s['alpha']}")
+    if cfg.get("run_tag"):  # opt-in label for sensitivity runs (e.g. a different value-function size), so ids never collide
+        parts.append(f"tag-{cfg['run_tag']}")
     return "_".join(parts) + f"_s{seed}"
 
 

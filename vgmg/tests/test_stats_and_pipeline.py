@@ -204,3 +204,12 @@ def test_h4_runs_are_a_separate_arm_in_the_results_table() -> None:
     row = {"method": "svdd_value", "selection": "argmax"}
     assert method_label({**row, "run_id": "svdd_value_mlp_sa_M10_h4r2_s0"}) == "svdd_value_h4r2"
     assert method_label({**row, "run_id": "svdd_value_mlp_sa_M10_s0"}) == "svdd_value"
+
+
+def test_run_tag_keeps_sensitivity_runs_apart_from_the_default_runs() -> None:
+    from vgmg.eval.comparison import method_label
+    cfg = load_config("configs/smoke_test.yaml", ["seed=1", "run_tag=vfwide"])
+    assert make_run_id(cfg) == "svdd_value_mlp_sa_M5_tag-vfwide_s1"
+    assert make_run_id(load_config("configs/smoke_test.yaml", ["seed=1"])) == "svdd_value_mlp_sa_M5_s1"
+    assert method_label({"method": "svdd_value", "selection": "argmax",
+                         "run_id": "svdd_value_mlp_sa_M10_tag-vfwide_s1"}) == "svdd_value_vfwide"

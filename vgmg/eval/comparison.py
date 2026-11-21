@@ -39,6 +39,9 @@ def method_label(run: dict) -> str:
     refit = re.search(r"_h4r(\d+)(?:_|$)", run["run_id"])  # H4 arm (value function refit on guided rollouts)
     if refit:
         base += f"_h4r{refit.group(1)}"
+    tag = re.search(r"_tag-([A-Za-z0-9.]+)(?:_|$)", run["run_id"])  # sensitivity runs (``run_tag``) form their own rows
+    if tag:
+        base += f"_{tag.group(1)}"
     if run["selection"] != "softmax":
         return base
     alpha = re.search(r"softmax([0-9.]+?)_s\d+$", run["run_id"])
